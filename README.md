@@ -47,8 +47,8 @@ pip install selenium
 ```
 git clone https://github.com/uptoratlen/gsArchivPDFDownloader
 ```
-* Get geckodriver from 
-https://github.com/mozilla/geckodriver/releases
+* Get geckodriver(.exe) as zip from 
+https://github.com/mozilla/geckodriver/releases, extract the geckodriver.exe
 and place it in the same folder as the gsArchivPDFDownloader.py
 * Edit gs.json
 ```
