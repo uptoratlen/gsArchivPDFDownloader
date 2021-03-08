@@ -10,6 +10,7 @@ import os
 import json
 from time import sleep, time
 
+
 def wait_for_download(filedownloadfullpath, timeout=30):
     time_out = time() + 2
     while not os.path.exists(f"{filedownloadfullpath}.part") and time() < time_out:
@@ -29,8 +30,9 @@ def wait_for_download(filedownloadfullpath, timeout=30):
         return True
 
 
-logging.basicConfig(format='%(asctime)s:[%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p', level=logging.INFO)
-# logging.basicConfig(format='%(asctime)s:[%(levelname)-5.5s]  %(message)s', datefmt='%Y-%m-%d %I:%M:%S %p', filename='gsArchivPDFDownloader.log', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s:[%(levelname)-5.5s]  %(message)s',
+                    datefmt='%Y-%m-%d %I:%M:%S %p', level=logging.INFO)
+# filename='gsArchivPDFDownloader.log'
 
 
 # Daten aus dem JSON File laden
@@ -38,8 +40,9 @@ with open('gs.json', 'r') as file:
     user_data = json.loads(file.read())
 
 logging.info(f"Download location:{user_data[0]['downloadtarget']}")
+if not os.path.exists(f"{user_data[0]['downloadtarget']}"):
+    os.makedirs(f"{user_data[0]['downloadtarget']}")
 
-logging.info(f"Driver   location:{user_data[0]['driverlocation']}")
 profile = webdriver.FirefoxProfile()
 profile.set_preference("browser.download.folderList", 2)
 profile.set_preference("browser.helperApps.alwaysAsk.force", False)
@@ -49,13 +52,11 @@ profile.set_preference("browser.download.dir", f"{user_data[0]['downloadtarget']
 profile.set_preference("plugin.disable_full_page_plugin_for_types", "application/pdf")
 profile.set_preference("pdfjs.disabled", True)
 profile.set_preference("browser.helperApps.neverAsk.saveToDisk", "application/pdf")
-driver = webdriver.Firefox(firefox_profile=profile, executable_path={user_data[0]['driverlocation']})
+driver = webdriver.Firefox(firefox_profile=profile)
 
-# Current Working Directory auf den Pfad des aktuellen Skripts setzen
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 url = "https://www.gamestar.de/plus/"
-# WebDriverWait Instanz, um später auf das erfolgreiche Versenden warten zu können.
 wait = WebDriverWait(driver, 20)
 
 # open browser and login
@@ -70,11 +71,11 @@ driver.find_element_by_id('loginbox-login-username').send_keys(user_data[0]['use
 driver.find_element_by_id('loginbox-login-password').send_keys(user_data[0]['password'])
 driver.find_element_by_css_selector("button.btn:nth-child(9)").click()
 
-jahr_start=1998
-jahr_end=2021
-ausgaben_max=13
-for jahr in range(jahr_start,jahr_end):
-    for ausgabe in range(1,ausgaben_max):
+jahr_start = 1998
+jahr_end = 2021
+ausgaben_max = 13
+for jahr in range(jahr_start, jahr_end):
+    for ausgabe in range(1, ausgaben_max):
         if os.path.exists(f"{user_data[0]['downloadtarget']}/GameStar_Nr._{ausgabe}_{jahr}.pdf") or \
                 os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}/GameStar_Nr._{ausgabe}_{jahr}.pdf"):
             logging.info(f"Skip download - already existing \
@@ -94,7 +95,8 @@ for jahr in range(jahr_start,jahr_end):
             wait.until(ec.visibility_of_element_located((By.XPATH, "//a[contains(@href, 'complete.pdf')]")))
             driver.find_element_by_xpath("//a[contains(@href, 'complete.pdf')]").click()
             sleep(1)
-            result = wait_for_download(f"{user_data[0]['downloadtarget']}/GameStar_Nr._{ausgabe}_{jahr}.pdf", timeout=30)
+            result = wait_for_download(f"{user_data[0]['downloadtarget']}/GameStar_Nr._{ausgabe}_{jahr}.pdf",
+                                       timeout=30)
             if result is True:
                 if not os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}"):
                     os.mkdir(f"{user_data[0]['downloadtarget']}/{jahr}")

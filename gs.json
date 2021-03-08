@@ -2,7 +2,6 @@
     {
         "user": "<edit your username here>",
         "password": "<edit your password here>",
-        "downloadtarget": "s:\\GS",
-        "driverlocation": "driver/geckodriver"
+        "downloadtarget": "c:\\download\\Gamestar-archive"
     }
 ]
