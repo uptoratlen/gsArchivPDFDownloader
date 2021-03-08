@@ -1,10 +1,11 @@
 # gsArchivPDFDownloader
 
 ## Table of contents
-* [General info](##General info)
-* [Exclusion](###Exclusion)
-* [Technologies](##technologies)
-* [Setup](##setup)
+- [General info](#General-info) 
+  * [Exclusion](#Exclusion)
+- [Technologies](#technologies)
+- [Setup](#setup)
+- [Run](#run)
 
 ## General info
 As a user of "Gamerstar Plus" I got access to the archive of pdfs.
@@ -44,7 +45,7 @@ pip install selenium
 ```
 * Get gsArchivPDFDownloader.py and gs.json from this repository
 ```
-git clone xxxxx
+git clone https://github.com/uptoratlen/gsArchivPDFDownloader
 ```
 * Get geckodriver from 
 https://github.com/mozilla/geckodriver/releases
@@ -60,7 +61,7 @@ and place it in the same folder as the gsArchivPDFDownloader.py
 ]
 ```
 
-on the downloadtarget please mask all "\" with a leading "\", so a path like "c:\download\Gamestar-archive" will look like "c:\\download\\Gamestar-archive".
+on the downloadtarget please mask all "\\" with a leading "\\", so a path like "c:\\download\\Gamestar-archive" will look like "c:\\\\download\\\\Gamestar-archive".
 
 ## Run
 To start a download job open a cmd and type
