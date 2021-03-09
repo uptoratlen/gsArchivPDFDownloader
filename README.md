@@ -18,6 +18,11 @@ Even as I got (most) of the editions in paper, I wanted to get them all as pdf.
 That is where **gsArchivPDFDownloader** comes in. It will connect with your credentials (yes, you still need a subscription, this is automation not "(G)amestar (t)heft (a)utomation ...)
 open all editions from 1998 to 2020 and download them to a selectable folder.
 
+### Demo Video
+Check this small demo Video: 
+![Demo Video](http://www.kastaban.de/demo_mp4/gsArchivePDFDownloader.mp4 "Demo Video")
+The video shows 
+
 ###Exclusion
 There are three exclusions:
 * No download for 1997 (as there are only 4) - I did it manually, aka too lazy to add code for this
