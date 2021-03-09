@@ -63,7 +63,7 @@ and place it in the same folder as the gsArchivPDFDownloader.py
 ]
 ```
 in user add the GameStar useraccount, in password your password. Simply the same info as you type in on the GameStar Page to login to your account.
-on the downloadtarget please mask all "\" with a leading "\", so a path like "c:\download\Gamestar-archive" will look like "c:\\download\\Gamestar-archive".
+on the downloadtarget please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive" will look like "c:\\\\download\\\\Gamestar-archive".
 
 ## Run
 To start a download job open a cmd and type
