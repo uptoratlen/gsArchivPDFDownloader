@@ -102,6 +102,8 @@ for jahr in range(jahr_start, jahr_end):
             if result is True:
                 if not os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}"):
                     os.mkdir(f"{user_data[0]['downloadtarget']}/{jahr}")
+                # Give it time to sync to disk - not clear
+                sleep(2)
                 os.rename(f"{user_data[0]['downloadtarget']}/GameStar_Nr._{ausgabe}_{jahr}.pdf",
                           f"{user_data[0]['downloadtarget']}/{jahr}/GameStar_Nr._{ausgabe}_{jahr}.pdf")
             else:
