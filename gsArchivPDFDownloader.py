@@ -62,7 +62,7 @@ wait = WebDriverWait(driver, 20)
 # open browser and login
 driver.get(url)
 logging.info(f"Browser now started with URL:{url} - \
-try now to log in with user/password [{user_data[0]['user']}/{user_data[0]['password']}]")
+try now to log in with user/password [{user_data[0]['user']}/******")
 
 wait.until(ec.visibility_of_element_located((By.LINK_TEXT, "einloggen")))
 driver.find_element_by_link_text("einloggen").click()
