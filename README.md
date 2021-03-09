@@ -21,7 +21,7 @@ open all editions from 1998 to 2020 and download them to a selectable folder.
 ### Demo Video
 Check this small demo Video: 
 [Demo Video](http://www.kastaban.de/demo_mp4/gsArchivePDFDownloader.mp4 "Demo Video")
-The video shows what the start should look like, than the start of the task. In this sample there are already some previous downloaded file. It will skip 1998/1 to 1998/6, than it will download 1998/7. Skip 8/1998 as also previously downloaded. Download 9/1998 and skip again 10/1998. The job was stopped for demo after 1/1999 and finally a tree is displayed. This is what the years shoudl look like in the very end.
+The video shows what the start should look like, than the start of the task. In this sample there are already some previous downloaded file. It will skip 1998/1 to 1998/6, than it will download 1998/7. Skip 8/1998 as also previously downloaded. Download 9/1998 and skip again 10/1998. The job was stopped for demo after 1/1999 and finally a tree is displayed. This is what the years should look like in the very end.
 
 ### Exclusion
 There are three exclusions:
@@ -35,12 +35,16 @@ There are three exclusions:
 The gsArchivPDFDownloader obviously was created in Python with Selenium and the geckodriver(firefox).
 geckodriver was not particular selected because of a certain feature, but because I use Firefox anyway.
 
+For users with less experience, basically what it does:
+Python opens a Firefox browser with a new profile (so you real one does not get altered) by the webdriver geckodriver (GeckoDriver is the link between Selenium and the Firefox browser), and than it simulates browser actions like a user does. Selenium is mostly used to automate tests of web applications.
+
 As I expect that the webpage may be altered by some time, I guess later the automation will fail.
 ```
 * The job ran successful with webpages at 6th March 2021.
 * Python 3.7.3 (also 3.9.2 also worked)
 * Selenium was version 3.141.0
 * geckodriver 0.29.0 (cf6956a5ec8e 2021-01-14 10:31 +0200)
+* Firefox 86.0(64-bit)
 * hosting OS was Windows 10 (20H2)
 ```
 
