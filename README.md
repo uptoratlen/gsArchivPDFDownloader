@@ -1,7 +1,7 @@
 # gsArchivPDFDownloader
 
 ## Table of contents
-- [General info](#General-info) 
+- [Overview](#Overview) 
   * [Exclusion](#Exclusion)
 - [Technologies](#technologies)
 - [Setup](#setup)
@@ -9,7 +9,7 @@
 - [Remarks](#remarks)
 - [FAQ](#faq)
 
-## General info
+## Overview
 As a user of "Gamerstar Plus" I got access to the archive of pdfs.
 This is part of the subscription. 
 There is the option to download the previous and current editions from 1997 to current day.
@@ -20,10 +20,10 @@ open all editions from 1998 to 2020 and download them to a selectable folder.
 
 ### Demo Video
 Check this small demo Video: 
-![Demo Video](http://www.kastaban.de/demo_mp4/gsArchivePDFDownloader.mp4 "Demo Video")
-The video shows 
+[Demo Video](http://www.kastaban.de/demo_mp4/gsArchivePDFDownloader.mp4 "Demo Video")
+The video shows what the start should look like, than the start of the task. In this sample there are already some previous downloaded file. It will skip 1998/1 to 1998/6, than it will download 1998/7. Skip 8/1998 as also previously downloaded. Download 9/1998 and skip again 10/1998. The job was stopped for demo after 1/1999 and finally a tree is displayed. This is what the years shoudl look like in the very end.
 
-###Exclusion
+### Exclusion
 There are three exclusions:
 * No download for 1997 (as there are only 4) - I did it manually, aka too lazy to add code for this
 * No download for 2021 (as there are only 4) - I did it manually, aka too lazy to add code for this
