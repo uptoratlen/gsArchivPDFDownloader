@@ -28,7 +28,7 @@ There are three exclusions:
 * No download for 1997 (as there are only 4) - I did it manually, aka too lazy to add code for this
 * No download for 2021 (as there are only 4) - I did it manually, aka too lazy to add code for this
 * No download for the 2013/13 edition (was a 13th edition in that year to overcome the existing gap that the 12th edition was about to be published in October of each year, because of a slight date change over time) - I did it manually,aka too lazy to add code for this
-
+* The edition of 2017/10 is not downloading - eh don't blame me, even manualy the option is not set for download all (date 09 March 2021) - I think I contacted GS on that.
 
 
 ## Technologies
@@ -56,7 +56,8 @@ pip install selenium
 ```
 * Get gsArchivPDFDownloader.py and gs.json from this repository
 ```
-TODO: add curl cmd to initial download 
+Click on "Code" (green button on top), than select "Download ZIP"
+Extract the Content to some writeable folder. Eg. \gsDownloader\gsArchivePDFDownloader 
 ```
 * Get geckodriver(.exe) as zip from 
 https://github.com/mozilla/geckodriver/releases, extract the geckodriver.exe
@@ -106,6 +107,10 @@ It did the job once, and it saved me some time (compared to manual download).But
 ## FAQ
 * Will it always work?  
   Well no, it depends on the webpage. In case the fields are renamed it will not work anymore. Taking in account that the basic function will stay the same, editing the names should not be a big issue.
+  
+* It not even download a single bit.  Did you edit the gs.json? Or It is broken already, sorry....drop me anote and I will a) fix or b)remove this :-)
+* It will only download a fraction of the edition like a sample.  Well you may not enetered in gs.json the right credentials
+* Hell, why you use simple sleeps?  Well...one time effort...lazy?...eh...I guess you are right, but it worked for me.....sorry.
 
 * After some successful downloads the job stopped, what is this?  
   I assume this is caused by a timeout, which is not catched. Just restart the job, it will start from the beginning, but skips all already downloaded pdf.
