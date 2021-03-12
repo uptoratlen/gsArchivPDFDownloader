@@ -17,11 +17,11 @@ There is the option to download the previous and current editions from 1997 to c
 But there is one gap, you can't download them in one job. You need to open each edition and then save it.
 Even as I got (most) of the editions in paper, I wanted to get them all as pdf.
 That is where **gsArchivPDFDownloader** comes in. It will connect with your credentials (yes, you still need a subscription, this is automation not "(G)amestar (t)heft (a)utomation ...)
-open all editions from 1998 to 2020 and download them to a selectable folder.
+open all editions from 1997/9 to 2021/3 and download them to a selectable folder.
 
 ### Demo Video
 Check this small demo Video: 
-Video shows Veriosn 0.1 - current solution works similar but a bit different logging  
+Video shows Version 0.1 - current solution works similar but a bit different logging  
 [Demo Video](http://www.kastaban.de/demo_mp4/gsArchivePDFDownloader.mp4 "Demo Video")  
 The video shows what the start should look like, than the start of the task. In this sample there are already some previous downloaded file. It will skip 1998/1 to 1998/6, than it will download 1998/7. Skip 8/1998 as also previously downloaded. Download 9/1998 and skip again 10/1998. The job was stopped for demo after 1/1999 and finally a tree is displayed. This is what the years should look like in the very end.
 
@@ -121,6 +121,7 @@ C:
             |
             +--Gamestar-archive
                               |
+                              +1997  <-- all editions of that year (4)
                               +1998  <-- all editions of that year
                               +1999  <-- all editions of that year
                               +2000  <-- all editions of that year
