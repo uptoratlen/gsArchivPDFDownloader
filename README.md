@@ -5,7 +5,7 @@
   * [Exclusion](#Exclusion)
 - [Technologies](#technologies)
 - [Setup](#setup)
-- [edit gs.json](#edit-gs.json) 
+- [Edit gs.json](#edit-gs.json) 
 - [Run](#run)
 - [Remarks](#remarks)
 - [FAQ](#faq)
