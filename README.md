@@ -5,6 +5,7 @@
   * [Exclusion](#Exclusion)
 - [Technologies](#technologies)
 - [Setup](#setup)
+- [edit gs.json](#edit gs.json) 
 - [Run](#run)
 - [Remarks](#remarks)
 - [FAQ](#faq)
@@ -20,15 +21,13 @@ open all editions from 1998 to 2020 and download them to a selectable folder.
 
 ### Demo Video
 Check this small demo Video: 
-[Demo Video](http://www.kastaban.de/demo_mp4/gsArchivePDFDownloader.mp4 "Demo Video")
+Video shows Veriosn 0.1 - current solution works similar but a bit different logging  
+[Demo Video](http://www.kastaban.de/demo_mp4/gsArchivePDFDownloader.mp4 "Demo Video")  
 The video shows what the start should look like, than the start of the task. In this sample there are already some previous downloaded file. It will skip 1998/1 to 1998/6, than it will download 1998/7. Skip 8/1998 as also previously downloaded. Download 9/1998 and skip again 10/1998. The job was stopped for demo after 1/1999 and finally a tree is displayed. This is what the years should look like in the very end.
 
 ### Exclusion
-There are three exclusions:
-* No download for 1997 (as there are only 4) - I did it manually, aka too lazy to add code for this
-* No download for 2021 (as there are only 4) - I did it manually, aka too lazy to add code for this
-* No download for the 2013/13 edition (was a 13th edition in that year to overcome the existing gap that the 12th edition was about to be published in October of each year, because of a slight date change over time) - I did it manually,aka too lazy to add code for this
-* The edition of 2017/10 is not downloading - eh don't blame me, even manualy the option is not set for download all (date 09 March 2021) - I think I contacted GS on that.
+There is one exclusions: (thx to thomas-k for motivation)
+* The edition of 2017/10 is not downloading - eh don't blame me, even manualy the option is not set for download all (date 09 March 2021) - I think I contacted GS on that. currently (12 March 2021 the edition is downloadable but not from blätterkatalog)
 
 
 ## Technologies
@@ -62,18 +61,47 @@ Extract the Content to some writeable folder. Eg. \gsDownloader\gsArchivePDFDown
 * Get geckodriver(.exe) as zip from 
 https://github.com/mozilla/geckodriver/releases, extract the geckodriver.exe
 and place it in the same folder as the gsArchivPDFDownloader.py
-* Edit gs.json
+## Edit gs.json
 ```
 [
     {
-        "user": "<edit your username here>",
-        "password": "<edit your password here>",
-        "downloadtarget": "c:\\download\\Gamestar-archive"
+        "user": "<edit_your_username_here>",
+        "password": "<edit_your_password_here>",
+        "downloadtarget": "c:\\download\\Gamestar-archive",
+        "edition2d": "No",
+        "skip20yearedition": "Yes",
+        "filenamepattern_intarget": "GameStar Nr. <ausgabe>_<jahr>.pdf",
+        "filenamepattern_fromserver": "GameStar Nr. <ausgabe>_<jahr>.pdf"
     }
 ]
 ```
-in user add the GameStar useraccount, in password your password. Simply the same info as you type in on the GameStar Page to login to your account.
-on the downloadtarget please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive" will look like "c:\\\\download\\\\Gamestar-archive".
+| Name          | value allowed        | Remark|
+|:---|:---:|:---|
+| user      | string | your gs user name |
+| password      | string   | your gs user password |
+| downloadtarget | string   | please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive" will look like "c:\\\\download\\\\Gamestar-archive". |
+| edition2d | [Yes/No] | "No" will use the edition from the server like 1,2,3,4,5; "Yes" will create edition names like "01,02,03,04,05..." |
+| skip20yearedition | [Yes/No] | "Yes" will skip the famous (at least by me) 2017/10 edition, if the download works (again) this could be "No" |
+| downloadtimeout | int | Time in seconds the download wait for a download before trying to download the next edition. This is a max timer, in case the edition is completed before that time it will not wait until the max time. Currently only successful downloads will be moved to target |
+
+
+
+### Filenamepattern in gs.json
+| Name          | value allowed        | Remark|
+|:---|:---:|:---|
+| filenamepattern_intarget      | string | The downloaded file will be moved with that name to the downloadtarget folder |
+| filenamepattern_fromserver      | string   | That is the file we get after we click on the "alle" button in "blätterkatalog" |
+
+Basic idea: The filename pattern is read from file and than the strings "\<ausgabe\>" and "\<jahr\>" are replaced by the current proceeded values.
+
+So you do not like the naming of the files? You want to honor GS? You need a file name like: "Tolle GameStar Nr. aus dem Jahr 1997 mit Ausgabe 9.pdf"
+than alter the "filenamepattern_intarget" to ```"filenamepattern_intarget": "Tolle GameStar Nr. aus dem Jahr <jahr> mit Ausgabe <ausgabe>.pdf"```
+or simpler you want a filename like "GameStar 1997-9.pdf" than use "filenamepattern_intarget" to ```"filenamepattern_intarget": "GameStar <jahr>-<ausgabe>.pdf"```
+
+I found out during the creation of v0.2 that the server changed the naming. They moved from "GameStar_Nr._9_1997.pdf"  to  "GameStar Nr. 9_1997". Mind the small chnage in use of the "_"
+To overcome this small but maybe annoying thing (maybe "they" did not like my downloader, or it was Shodan, GLaDOS...), I added also here a way to get the right URL.
+As mentioned in the start and end, if "they" change fundamental things, upsi....it will not work anymore.
+With that we could try a small fix.
 
 ## Run
 To start a download job open a cmd and type
@@ -108,12 +136,12 @@ It did the job once, and it saved me some time (compared to manual download).But
 * Will it always work?  
   Well no, it depends on the webpage. In case the fields are renamed it will not work anymore. Taking in account that the basic function will stay the same, editing the names should not be a big issue.
   
-* It not even download a single bit.  Did you edit the gs.json? Or It is broken already, sorry....drop me anote and I will a) fix or b)remove this :-)
+* It not even download a single bit.  Did you edit the gs.json? Or It is broken already, sorry....drop me a note and I will a) fix or b)remove this :-)
 * It will only download a fraction of the edition like a sample.  Well you may not enetered in gs.json the right credentials
 * Hell, why you use simple sleeps?  Well...one time effort...lazy?...eh...I guess you are right, but it worked for me.....sorry.
 
 * After some successful downloads the job stopped, what is this?  
-  I assume this is caused by a timeout, which is not catched. Just restart the job, it will start from the beginning, but skips all already downloaded pdf.
+  I assume this is caused by a timeout, which is not caught. Just restart the job, it will start from the beginning, but skips all already downloaded pdf.
 
 * You mixed German and English in the logging?  
   Yes, as I said it was more a one timer. In case I got some time I may convert all to one language.

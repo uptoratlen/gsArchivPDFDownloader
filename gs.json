@@ -1,7 +1,12 @@
 [
     {
-        "user": "<edit your username here>",
-        "password": "<edit your password here>",
-        "downloadtarget": "c:\\download\\Gamestar-archive"
+        "user": "<edit_your_username_here>",
+        "password": "<edit_your_password_here>",
+        "downloadtarget": "c:\\download\\Gamestar-archive",
+        "edition2d": "No",
+        "skip20yearedition": "Yes",
+        "downloadtimeout": 240,
+        "filenamepattern_intarget": "GameStar Nr. <ausgabe>_<jahr>.pdf",
+        "filenamepattern_fromserver": "GameStar Nr. <ausgabe>_<jahr>.pdf"
     }
 ]
