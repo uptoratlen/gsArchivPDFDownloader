@@ -5,7 +5,8 @@
   * [Exclusion](#Exclusion)
 - [Technologies](#technologies)
 - [Setup](#setup)
-- [Edit gs.json](#edit-gs.json) 
+- [Edit gs.json](#Edit-gs.json)
+  * [Filenamepattern in gs.json](Filenamepattern-in-gs.json) 
 - [Run](#run)
 - [Remarks](#remarks)
 - [FAQ](#faq)
@@ -60,7 +61,8 @@ Extract the Content to some writeable folder. Eg. \gsDownloader\gsArchivePDFDown
 ```
 * Get geckodriver(.exe) as zip from 
 https://github.com/mozilla/geckodriver/releases, extract the geckodriver.exe
-and place it in the same folder as the gsArchivPDFDownloader.py
+and place it in the same folder as the gsArchivPDFDownloader.py  
+
 ## Edit gs.json
 ```
 [
