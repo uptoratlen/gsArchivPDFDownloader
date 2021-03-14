@@ -1,12 +1,12 @@
 # gsArchivPDFDownloader
 
-## Table of contents
-- [Overview](#overview) 
+- [Overview](#overview)
+  * [Demo Video](#demo-video)
   * [Exclusion](#exclusion)
 - [Technologies](#technologies)
 - [Setup](#setup)
-- [Edit gs.json](#edit-gs.json)
-  * [Filenamepattern in gs.json](#filenamepattern-in-gs.json) 
+- [Edit gs.json](#edit-gsjson)
+  * [Filenamepattern in gs.json](#filenamepattern-in-gsjson)
 - [Run](#run)
 - [Remarks](#remarks)
 - [FAQ](#faq)
