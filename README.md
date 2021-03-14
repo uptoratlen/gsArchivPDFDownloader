@@ -109,7 +109,7 @@ This is a not working sample ! - Get the real one from code or release page.
 | password      | string   | your gs user password |
 | downloadtarget | string   | please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive" will look like "c:\\\\download\\\\Gamestar-archive". |
 | edition2d | [Yes/No] | "No" will use the edition from the server like 1,2,3,4,5; "Yes" will create edition names like "01,02,03,04,05..." |
-| ~~skip20yearedition~~ | deprecated  | not used anymore since V0.3; see "editions"(#editions-in-gsjson) for more info |
+| ~~skip20yearedition~~ | deprecated  | not used anymore since V0.3; see ["editions"](#editions-in-gsjson) for more info |
 | downloadtimeout | int | Time in seconds the download wait for a download before trying to download the next edition. This is a max timer, in case the edition is completed before that time it will not wait until the max time. Currently only successful downloads will be moved to target |
 
 
