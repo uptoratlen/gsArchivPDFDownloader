@@ -6,6 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import TimeoutException
 
 import os
 import json
@@ -29,7 +30,6 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                 for filenamerepl in (("<ausgabe>", str(ausgabe)), ("<jahr>", str(jahr))):
                     filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
 
-
             for filenamerepl in (("<ausgabe>", str(ausgabe)), ("<jahr>", str(jahr))):
                 filenamepattern_4download = filenamepattern_4download.replace(*filenamerepl)
 
@@ -39,10 +39,11 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
             logging.debug(f'Filepattern(from server)     :[{filenamepattern_download}]')
             logging.debug(f'Filepattern(local for target):[{filenamepattern_local}]')
 
-            if jahr == 2017 and ausgabe == 10 and user_data[0]['skip20yearedition'].lower() == "yes":
-                logging.info(f"Skip download - this is the current (by 11 March 2021) faulty download link of "
+            if jahr == 2017 and ausgabe == 10:
+                logging.info(f"Warning - this is the current (by 11 March 2021) faulty download link of "
                              f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
-                continue
+                logging.info(f"as by user request the download will be done;"
+                             f"if it fails please remove edition from gs.json auf year 2017")
 
             if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}"):
                 logging.info(f"Skip download - already existing "
@@ -74,6 +75,8 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                               f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}")
                 else:
                     logging.warning('Download not yet completed - not possible to move by now')
+            except TimeoutException as t:
+                logging.exception('Browser page load failed;maybe edition does not exist;or very slow load / timeout exception ')
             except Exception as e:
                 logging.exception(f'Exception:{e}')
 
@@ -105,6 +108,7 @@ logging.basicConfig(format='%(asctime)s:[%(levelname)-5.5s]  %(message)s',
 # Daten aus dem JSON File laden
 with open('gs.json', 'r') as file:
     user_data = json.loads(file.read())
+
 
 logging.info(f"Download location:{user_data[0]['downloadtarget']}")
 logging.info(f"filenamepattern_fromserver:{user_data[0]['filenamepattern_fromserver']}")
@@ -141,41 +145,13 @@ driver.find_element_by_id('loginbox-login-username').send_keys(user_data[0]['use
 driver.find_element_by_id('loginbox-login-password').send_keys(user_data[0]['password'])
 driver.find_element_by_css_selector('button.btn:nth-child(9)').click()
 
-
-year_start = 1997
-year_end = 1997
-edition_start = 9
-edition_end = 12
-download_edition(year_start, edition_start, year_end, edition_end, user_data[0]['filenamepattern_fromserver'],
-                 user_data[0]['filenamepattern_intarget'])
-
-year_start = 1998
-year_end = 2013
-edition_start = 1
-edition_end = 12
-download_edition(year_start, edition_start, year_end, edition_end, user_data[0]['filenamepattern_fromserver'],
-                 user_data[0]['filenamepattern_intarget'])
-
-year_start = 2013
-year_end = 2013
-edition_start = 13
-edition_end = 13
-download_edition(year_start, edition_start, year_end, edition_end, user_data[0]['filenamepattern_fromserver'],
-                 user_data[0]['filenamepattern_intarget'])
-
-year_start = 2014
-year_end = 2020
-edition_start = 1
-edition_end = 12
-download_edition(year_start, edition_start, year_end, edition_end, user_data[0]['filenamepattern_fromserver'],
-                 user_data[0]['filenamepattern_intarget'])
-
-year_start = 2021
-year_end = 2021
-edition_start = 1
-edition_end = 3
-download_edition(year_start, edition_start, year_end, edition_end, user_data[0]['filenamepattern_fromserver']
-                 ,user_data[0]['filenamepattern_intarget'])
+for editions in user_data[0]['editions']:
+    for year in editions:
+        logging.info(f"(Year,Editions)=>({year}, {editions[year]})")
+        for edition in editions[year].split(','):
+            download_edition(int(year), int(edition), int(year), int(edition),
+                             user_data[0]['filenamepattern_fromserver'],
+                             user_data[0]['filenamepattern_intarget'])
 
 logging.info(f"Last requested editon downloaded - give job some time (30s) to finish, for no good reason...")
 sleep(30)
