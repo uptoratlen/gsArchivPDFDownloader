@@ -77,7 +77,7 @@ This is a not working sample ! - Get the real one from code or release page.
         "skip20yearedition": "Yes",
         "filenamepattern_intarget": "GameStar Nr. <ausgabe>_<jahr>.pdf",
         "filenamepattern_fromserver": "GameStar Nr. <ausgabe>_<jahr>.pdf"
-"editions":[
+        "editions":[
          {
             "1997":"9,10,11,12"
          },
