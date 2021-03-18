@@ -6,10 +6,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 import os
 import json
+
+import argparse
 from time import sleep, time
 
 
@@ -56,27 +58,37 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                 sleep(5)
                 logging.info(f'Try now download of : Jahr {jahr} and Ausgabe {ausgabe}')
                 driver.get(f'https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahr}&bkm={ausgabe}')
-                sleep(5)
-                save_button = wait_de.until(ec.visibility_of_element_located((By.XPATH, '//*[@id="top_menu_save"]')))
-                ActionChains(driver).move_to_element(save_button).click().perform()
-                wait_de.until(ec.visibility_of_element_located((By.XPATH, '//p[@class="title"]')))
+                sleep(8)
+                try:
+                    if driver.find_elements_by_xpath('//span[@class="caption-helper"]')[0].text == \
+                            f"{user_data[0]['page_not_found']}":
+                        logging.warning('Looks like the page not found is displayed - skip this edition')
+                        continue
+                except NoSuchElementException:
+                    logging.debug('Looks like a displayed edition')
 
-                wait_de.until(ec.visibility_of_element_located((By.XPATH, "//a[contains(@href, 'complete.pdf')]")))
-                driver.find_element_by_xpath("//a[contains(@href, 'complete.pdf')]").click()
-                sleep(1)
-                result = wait_for_download(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}",
-                                           timeout=user_data[0]['downloadtimeout'])
-                if result is True:
-                    if not os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}"):
-                        os.mkdir(f"{user_data[0]['downloadtarget']}/{jahr}")
-                    # Give it time to sync to disk - not clear
-                    sleep(2)
-                    os.rename(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}",
-                              f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}")
-                else:
-                    logging.warning('Download not yet completed - not possible to move by now')
+                    save_button = wait_de.until(ec.visibility_of_element_located((By.XPATH, '//*[@id="top_menu_save"]')))
+
+                    ActionChains(driver).move_to_element(save_button).click().perform()
+                    wait_de.until(ec.visibility_of_element_located((By.XPATH, '//p[@class="title"]')))
+
+                    wait_de.until(ec.visibility_of_element_located((By.XPATH, "//a[contains(@href, 'complete.pdf')]")))
+                    driver.find_element_by_xpath("//a[contains(@href, 'complete.pdf')]").click()
+                    sleep(1)
+                    result = wait_for_download(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}",
+                                               timeout=user_data[0]['downloadtimeout'])
+                    if result is True:
+                        if not os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}"):
+                            os.mkdir(f"{user_data[0]['downloadtarget']}/{jahr}")
+                        # Give it time to sync to disk - not clear
+                        sleep(2)
+                        os.rename(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}",
+                                  f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}")
+                    else:
+                        logging.warning('Download not yet completed - not possible to move by now')
             except TimeoutException as t:
-                logging.exception('Browser page load failed;maybe edition does not exist;or very slow load / timeout exception ')
+                logging.exception(f'Browser page load failed;maybe edition does not exist;or very slow load '
+                                  f'- timeout exception:{t}')
             except Exception as e:
                 logging.exception(f'Exception:{e}')
 
@@ -105,10 +117,16 @@ logging.basicConfig(format='%(asctime)s:[%(levelname)-5.5s]  %(message)s',
                     datefmt='%Y-%m-%d %I:%M:%S %p', level=logging.INFO)
 # filename='gsArchivPDFDownloader.log'
 
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 # Daten aus dem JSON File laden
 with open('gs.json', 'r') as file:
     user_data = json.loads(file.read())
 
+parser = argparse.ArgumentParser(description='Download a certain year with all editions')
+parser.add_argument('-y', '--year', type=int, help='year in range [1997-2035]')
+args = parser.parse_args()
+if args.year and ( args.year < 1997 or args.year > 2035):
+    parser.error("Year range is 1997-2035")
 
 logging.info(f"Download location:{user_data[0]['downloadtarget']}")
 logging.info(f"filenamepattern_fromserver:{user_data[0]['filenamepattern_fromserver']}")
@@ -128,8 +146,6 @@ profile.set_preference('pdfjs.disabled', True)
 profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/pdf')
 driver = webdriver.Firefox(firefox_profile=profile)
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
 url = 'https://www.gamestar.de/plus/'
 wait = WebDriverWait(driver, 20)
 
@@ -145,13 +161,20 @@ driver.find_element_by_id('loginbox-login-username').send_keys(user_data[0]['use
 driver.find_element_by_id('loginbox-login-password').send_keys(user_data[0]['password'])
 driver.find_element_by_css_selector('button.btn:nth-child(9)').click()
 
-for editions in user_data[0]['editions']:
-    for year in editions:
-        logging.info(f"(Year,Editions)=>({year}, {editions[year]})")
-        for edition in editions[year].split(','):
-            download_edition(int(year), int(edition), int(year), int(edition),
-                             user_data[0]['filenamepattern_fromserver'],
-                             user_data[0]['filenamepattern_intarget'])
+if args.year:
+    year = args.year
+    for edition in range(1, 14):
+        download_edition(int(year), int(edition), int(year),
+                         int(edition), user_data[0]['filenamepattern_fromserver'],
+                         user_data[0]['filenamepattern_intarget'])
+else:
+    for editions in user_data[0]['editions']:
+        for year in editions:
+            logging.info(f"(Year,Editions)=>({year}, {editions[year]})")
+            for edition in editions[year].split(','):
+                download_edition(int(year), int(edition), int(year), int(edition),
+                                 user_data[0]['filenamepattern_fromserver'],
+                                 user_data[0]['filenamepattern_intarget'])
 
 logging.info(f"Last requested editon downloaded - give job some time (30s) to finish, for no good reason...")
 sleep(30)
