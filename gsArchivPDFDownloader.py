@@ -64,28 +64,28 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                             f"{user_data[0]['page_not_found']}":
                         logging.warning('Looks like the page not found is displayed - skip this edition')
                         continue
-                except NoSuchElementException:
+
+                except IndexError:
                     logging.debug('Looks like a displayed edition')
 
-                    save_button = wait_de.until(ec.visibility_of_element_located((By.XPATH, '//*[@id="top_menu_save"]')))
+                save_button = wait_de.until(ec.visibility_of_element_located((By.XPATH, '//*[@id="top_menu_save"]')))
+                ActionChains(driver).move_to_element(save_button).click().perform()
+                wait_de.until(ec.visibility_of_element_located((By.XPATH, '//p[@class="title"]')))
 
-                    ActionChains(driver).move_to_element(save_button).click().perform()
-                    wait_de.until(ec.visibility_of_element_located((By.XPATH, '//p[@class="title"]')))
-
-                    wait_de.until(ec.visibility_of_element_located((By.XPATH, "//a[contains(@href, 'complete.pdf')]")))
-                    driver.find_element_by_xpath("//a[contains(@href, 'complete.pdf')]").click()
-                    sleep(1)
-                    result = wait_for_download(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}",
-                                               timeout=user_data[0]['downloadtimeout'])
-                    if result is True:
-                        if not os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}"):
-                            os.mkdir(f"{user_data[0]['downloadtarget']}/{jahr}")
-                        # Give it time to sync to disk - not clear
-                        sleep(2)
-                        os.rename(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}",
-                                  f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}")
-                    else:
-                        logging.warning('Download not yet completed - not possible to move by now')
+                wait_de.until(ec.visibility_of_element_located((By.XPATH, "//a[contains(@href, 'complete.pdf')]")))
+                driver.find_element_by_xpath("//a[contains(@href, 'complete.pdf')]").click()
+                sleep(1)
+                result = wait_for_download(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}",
+                                           timeout=user_data[0]['downloadtimeout'])
+                if result is True:
+                    if not os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}"):
+                        os.mkdir(f"{user_data[0]['downloadtarget']}/{jahr}")
+                    # Give it time to sync to disk - not clear
+                    sleep(2)
+                    os.rename(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}",
+                              f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}")
+                else:
+                    logging.warning('Download not yet completed - not possible to move by now')
             except TimeoutException as t:
                 logging.exception(f'Browser page load failed;maybe edition does not exist;or very slow load '
                                   f'- timeout exception:{t}')
