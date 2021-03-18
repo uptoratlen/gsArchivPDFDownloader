@@ -9,6 +9,8 @@
   * [Filenamepattern in gs.json](#filenamepattern-in-gsjson) 
   * [editions in gs.json](#editions-in-gsjson) 
 - [Run](#run)
+  * [based on gs.json](#based-on-gsjson)
+  * [commandline argument](#commandline-argument)
 - [Remarks](#remarks)
 - [FAQ](#faq)
 
@@ -163,7 +165,8 @@ Attention:
 _If you create a list like ```"2035":"4,5,6"``` you will need a time-machine, as the year **2035** is not yet reached and the editions **4,5,6** do really not exist by now....  
 In other words, **the script does not check of any misconfiguration or meaningless values**._
 
-## Run
+## Run 
+### based on gs.json
 To start a download job open a cmd and type
 ```
 python gsArchivPDFDownloader.py
@@ -187,6 +190,22 @@ C:
                               +2000  <-- all editions of that year (12)
                               +...         
 ```
+The requested editions are stored in the gs.json ``` "editions" ```
+
+### commandline argument
+```
+usage: gsArchivPDFDownloader.py [-h] [-y YEAR]
+
+Download a certain year with all editions
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -y YEAR, --year YEAR  year in range [1997-2035]
+```
+
+eg. a commandline  ``` python gsArchivPDFDownloader.py -y 2020 ``` will download all editions from 2020.
+In case the commandline is used due to 2017 each year will try to get a 13 editions. Yes I know that does not make much sense, but let me fix that in a future edition in a better way.
+The rest is just teh same as a job on the gs.json run type.
 
 ## Remarks
 As I used it one time, there is of course plenty of room for improvements.
@@ -199,7 +218,7 @@ It did the job once, and it saved me some time (compared to manual download).But
 * It not even download a single bit.  
   Did you edit the gs.json? Or It is broken already, sorry....drop me a note and I will a) fix or b)remove this :-)
 * It will only download a fraction of the edition like a sample.  
-  You may not enetered in gs.json the right credentials
+  You may not entered in gs.json the right credentials
 * Hell, why you use simple sleeps?  
   ...one time effort...lazy?...eh...I guess you are right, but it worked for me.....sorry.
 

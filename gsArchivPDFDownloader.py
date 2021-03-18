@@ -6,7 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException
 
 import os
 import json
@@ -60,15 +60,11 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                 driver.get(f'https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahr}&bkm={ausgabe}')
                 sleep(8)
                 try:
-                    if driver.find_elements_by_xpath('//span[@class="caption-helper"]')[0].text == \
-                            f"{user_data[0]['page_not_found']}":
-                        logging.warning('Looks like the page not found is displayed - skip this edition')
-                        continue
-
-                except IndexError:
-                    logging.debug('Looks like a displayed edition')
-
-                save_button = wait_de.until(ec.visibility_of_element_located((By.XPATH, '//*[@id="top_menu_save"]')))
+                    save_button = wait_de.until(ec.visibility_of_element_located((By.XPATH,
+                                                                                  '//*[@id="top_menu_save"]')))
+                except TimeoutException:
+                    logging.warning('Looks like the page not found is displayed - skip this edition')
+                    continue
                 ActionChains(driver).move_to_element(save_button).click().perform()
                 wait_de.until(ec.visibility_of_element_located((By.XPATH, '//p[@class="title"]')))
 
@@ -125,7 +121,7 @@ with open('gs.json', 'r') as file:
 parser = argparse.ArgumentParser(description='Download a certain year with all editions')
 parser.add_argument('-y', '--year', type=int, help='year in range [1997-2035]')
 args = parser.parse_args()
-if args.year and ( args.year < 1997 or args.year > 2035):
+if args.year and (args.year < 1997 or args.year > 2035):
     parser.error("Year range is 1997-2035")
 
 logging.info(f"Download location:{user_data[0]['downloadtarget']}")
