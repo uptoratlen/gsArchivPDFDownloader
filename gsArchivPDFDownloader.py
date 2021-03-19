@@ -119,10 +119,10 @@ with open('gs.json', 'r') as file:
     user_data = json.loads(file.read())
 
 parser = argparse.ArgumentParser(description='Download a certain year with all editions')
-parser.add_argument('-y', '--year', type=int, help='year in range [1997-2035]')
+parser.add_argument('-y', '--year', type=int, help='a single year in range [1997-2035]')
 args = parser.parse_args()
 if args.year and (args.year < 1997 or args.year > 2035):
-    parser.error("Year range is 1997-2035")
+    parser.error("Select a year within range 1997 to 2035")
 
 logging.info(f"Download location:{user_data[0]['downloadtarget']}")
 logging.info(f"filenamepattern_fromserver:{user_data[0]['filenamepattern_fromserver']}")
