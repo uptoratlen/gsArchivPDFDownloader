@@ -1,8 +1,11 @@
+import sys
 from datetime import datetime
 import logging
+from logging.handlers import RotatingFileHandler
 
 from selenium import webdriver
 from selenium.webdriver import FirefoxProfile
+from selenium.webdriver.firefox.options import Options as Options_FF
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
@@ -36,7 +39,7 @@ def filename_modification(filestring_download_in, filestring_local_in, edition_m
 def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                      filestring_download, filestring_target):
     wait_de = WebDriverWait(driver, 10)
-
+    dl_success = True
     for jahr in range(jahr_start, jahr_end+1):
         for ausgabe in range(ausgaben_start, ausgaben_end+1):
             filenamepattern_download, filenamepattern_local = filename_modification(
@@ -55,20 +58,24 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                 logging.info(f"Skip download - already existing "
                              f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
                 continue
-
             try:
                 if os.path.exists(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}"):
                     os.remove(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}")
                 sleep(5)
-                logging.info(f'Try now download of : Jahr {jahr} and Ausgabe {ausgabe}')
+                logging.info(f'Try now download of : Jahr {jahr} and Ausgabe {ausgabe} - URL:https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahr}&bkm={ausgabe}')
                 driver.get(f'https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahr}&bkm={ausgabe}')
                 sleep(8)
                 try:
                     save_button = wait_de.until(ec.visibility_of_element_located((By.XPATH,
                                                                                   '//*[@id="top_menu_save"]')))
                 except TimeoutException:
-                    logging.warning('Looks like the page not found is displayed - skip this edition')
-                    continue
+                    if args.latest:
+                        logging.warning('Looks like the page not found is displayed - this edition failed')
+                        dl_success = False
+                        continue
+                    else:
+                        logging.warning('Looks like the page not found is displayed - skip this edition')
+                        continue
                 ActionChains(driver).move_to_element(save_button).click().perform()
                 wait_de.until(ec.visibility_of_element_located((By.XPATH, '//p[@class="title"]')))
 
@@ -91,7 +98,8 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                                   f'- timeout exception:{t}')
             except Exception as e:
                 logging.exception(f'Exception:{e}')
-
+                driver.quit()
+    return dl_success
 
 def wait_for_download(filedownloadfullpath, timeout=30):
     logging.debug(f'Download timeout is:[{timeout}]')
@@ -113,9 +121,27 @@ def wait_for_download(filedownloadfullpath, timeout=30):
         return True
 
 
-logging.basicConfig(format='%(asctime)s:[%(levelname)-5.5s]  %(message)s',
-                    datefmt='%Y-%m-%d %I:%M:%S %p', level=logging.INFO)
-# filename='gsArchivPDFDownloader.log'
+# Loggin set up
+LOG_FILE = os.path.dirname(os.path.abspath(__file__)) + '/gsArchivPDFDownloader.log'
+
+logger = logging.getLogger('')
+logger.setLevel(logging.DEBUG)
+fh = logging.handlers.RotatingFileHandler(LOG_FILE, maxBytes=100000, backupCount=10)
+sh = logging.StreamHandler(sys.stdout)
+log_level = logging.getLevelName('INFO')
+logger.setLevel(log_level)
+if log_level == 10:
+    formatter = logging.Formatter('[%(asctime)s] - %(levelname)s - [%(name)s.%(funcName)s:%(lineno)d] - %(message)s',
+                              datefmt='%Y-%m-%d %H:%M:%S')
+else:
+    formatter = logging.Formatter('%(asctime)s:[%(levelname)-5.5s] %(message)s',
+                              datefmt='%Y-%m-%d %H:%M:%S')
+
+fh.setFormatter(formatter)
+sh.setFormatter(formatter)
+logger.addHandler(fh)
+logger.addHandler(sh)
+
 json_config_file = 'gs.json'
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -124,7 +150,7 @@ with open(json_config_file, 'r') as file:
     user_data = json.loads(file.read())
 
 parser = argparse.ArgumentParser(description='Download a certain year with all editions')
-parser.add_argument('--latest',  action='store_const',
+parser.add_argument('-l', '--latest',  action='store_const',
                     const=True, help='try to download always the newest (starting from 2021-03)')
 parser.add_argument('-y', '--year', type=int, help='a single year in range [1997-2035]')
 args = parser.parse_args()
@@ -147,7 +173,12 @@ profile.set_preference('browser.download.dir', f"{user_data[0]['downloadtarget']
 profile.set_preference('plugin.disable_full_page_plugin_for_types', 'application/pdf')
 profile.set_preference('pdfjs.disabled', True)
 profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/pdf')
-driver = webdriver.Firefox(firefox_profile=profile)
+
+options = Options_FF()
+options.headless = False
+if args.latest and user_data[0]['browser_display_on_latest'].lower() =="no":
+    options.headless = True
+driver = webdriver.Firefox(options=options, firefox_profile=profile)
 
 url = 'https://www.gamestar.de/plus/'
 wait = WebDriverWait(driver, 20)
@@ -181,6 +212,9 @@ elif args.latest:
 
     jahr = user_data[0]['latestdownload'][0]['year']
     ausgabe = user_data[0]['latestdownload'][0]['edition']
+    jahr_lastdl = str(jahr)
+    ausgabe_lastdl = str(ausgabe)
+
     if int(ausgabe) == 12:
         logging.debug('Latest downloaded edition was a 12, rollover to next year.')
         jahr = int(jahr) + 1
@@ -194,13 +228,11 @@ elif args.latest:
     ausgabe = str(int(ausgabe)+1)
 
     continue_download = True
-    jahr_lastdl = jahr
-    ausgabe_lastdl = ausgabe
-
+    success = True
     while continue_download:
         logging.info(f"Trying now to download the latest version for (Year,Editions) (curMonth/Year)=>"
                      f"({jahr}, {ausgabe}) ({current_month}/{current_year})")
-        logging.info(f"maxMonth, maxYear=>({max_month_latest}, {max_year_latest})")
+        logging.debug(f"maxMonth, maxYear=>({max_month_latest}, {max_year_latest})")
         filenamepattern_download, filenamepattern_local = filename_modification(
             user_data[0]['filenamepattern_intarget'], user_data[0]['filenamepattern_fromserver'], ausgabe, jahr)
         logging.debug(f'Filepattern(from server)     :[{filenamepattern_download}]')
@@ -208,14 +240,18 @@ elif args.latest:
         if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}"):
             logging.info(f"Skip download - already existing "
                          f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
+            success = True
         else:
             logging.info(f"Process Download for "
                          f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
-            download_edition(int(jahr), int(ausgabe), int(jahr),
+            success = download_edition(int(jahr), int(ausgabe), int(jahr),
                              int(ausgabe), user_data[0]['filenamepattern_fromserver'],
                              user_data[0]['filenamepattern_intarget'])
-        jahr_lastdl = jahr
-        ausgabe_lastdl = ausgabe
+        logging.debug(f"success [{success}]")
+        if success:
+            logging.debug(f"Last success download [{ausgabe_lastdl}/{jahr_lastdl}]")
+            jahr_lastdl = str(jahr)
+            ausgabe_lastdl = str(ausgabe)
 
         ausgabe = int(ausgabe)+1
         if int(ausgabe) == 13:
@@ -233,6 +269,7 @@ elif args.latest:
             logging.debug('Stop latest download loop - max reached.')
             continue_download = False
 
+    logging.info(f"Last success download [{ausgabe_lastdl}/{jahr_lastdl}]")
     user_data[0]['latestdownload'][0]['year'] = jahr_lastdl
     user_data[0]['latestdownload'][0]['edition'] = ausgabe_lastdl
 

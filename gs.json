@@ -9,10 +9,11 @@
         "filenamepattern_fromserver": "GameStar Nr. <ausgabe>_<jahr>.pdf",
         "latestdownload": [
             {
-                "year": 2021,
+                "year": "2021",
                 "edition": "3"
             }
         ],
+        "browser_display_on_latest": "no",
         "editions": [
             {
                 "1997": "9,10,11,12"
