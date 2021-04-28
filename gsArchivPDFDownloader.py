@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 
 from selenium import webdriver
@@ -15,28 +16,31 @@ import argparse
 from time import sleep, time
 
 
+def filename_modification(filestring_download_in, filestring_local_in, edition_month, edition_jahr):
+    filenamepattern_4download = filestring_download_in
+    filenamepattern_4target = filestring_local_in
+
+    if user_data[0]['edition2d'].lower() == 'yes':
+        for filenamerepl in (("<ausgabe>", f"{edition_month:02d}"), ("<jahr>", str(edition_jahr))):
+            filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
+
+    else:
+        for filenamerepl in (("<ausgabe>", str(edition_month)), ("<jahr>", str(edition_jahr))):
+            filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
+
+    for filenamerepl in (("<ausgabe>", str(edition_month)), ("<jahr>", str(edition_jahr))):
+        filenamepattern_4download = filenamepattern_4download.replace(*filenamerepl)
+    return filenamepattern_4download, filenamepattern_4target
+
+
 def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                      filestring_download, filestring_target):
     wait_de = WebDriverWait(driver, 10)
 
     for jahr in range(jahr_start, jahr_end+1):
         for ausgabe in range(ausgaben_start, ausgaben_end+1):
-            filenamepattern_4target = filestring_target
-            filenamepattern_4download = filestring_download
-
-            if user_data[0]['edition2d'].lower() == 'yes':
-                for filenamerepl in (("<ausgabe>", f"{ausgabe:02d}"), ("<jahr>", str(jahr))):
-                    filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
-
-            else:
-                for filenamerepl in (("<ausgabe>", str(ausgabe)), ("<jahr>", str(jahr))):
-                    filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
-
-            for filenamerepl in (("<ausgabe>", str(ausgabe)), ("<jahr>", str(jahr))):
-                filenamepattern_4download = filenamepattern_4download.replace(*filenamerepl)
-
-            filenamepattern_download = filenamepattern_4download
-            filenamepattern_local = filenamepattern_4target
+            filenamepattern_download, filenamepattern_local = filename_modification(
+                filestring_target, filestring_download, ausgabe, jahr)
 
             logging.debug(f'Filepattern(from server)     :[{filenamepattern_download}]')
             logging.debug(f'Filepattern(local for target):[{filenamepattern_local}]')
@@ -112,13 +116,16 @@ def wait_for_download(filedownloadfullpath, timeout=30):
 logging.basicConfig(format='%(asctime)s:[%(levelname)-5.5s]  %(message)s',
                     datefmt='%Y-%m-%d %I:%M:%S %p', level=logging.INFO)
 # filename='gsArchivPDFDownloader.log'
+json_config_file = 'gs.json'
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 # Daten aus dem JSON File laden
-with open('gs.json', 'r') as file:
+with open(json_config_file, 'r') as file:
     user_data = json.loads(file.read())
 
 parser = argparse.ArgumentParser(description='Download a certain year with all editions')
+parser.add_argument('--latest',  action='store_const',
+                    const=True, help='try to download always the newest (starting from 2021-03)')
 parser.add_argument('-y', '--year', type=int, help='a single year in range [1997-2035]')
 args = parser.parse_args()
 if args.year and (args.year < 1997 or args.year > 2035):
@@ -163,6 +170,76 @@ if args.year:
         download_edition(int(year), int(edition), int(year),
                          int(edition), user_data[0]['filenamepattern_fromserver'],
                          user_data[0]['filenamepattern_intarget'])
+elif args.latest:
+    current_year = datetime.now().year
+    # current_year = 2020
+    current_month = datetime.now().month
+    # current_month = 11
+    current_day = datetime.now().day
+    max_year_latest = datetime.now().year
+    max_month_latest = datetime.now().month
+
+    jahr = user_data[0]['latestdownload'][0]['year']
+    ausgabe = user_data[0]['latestdownload'][0]['edition']
+    if int(ausgabe) == 12:
+        logging.debug('Latest downloaded edition was a 12, rollover to next year.')
+        jahr = int(jahr) + 1
+        ausgabe = 0
+        max_month_latest = 1
+    else:
+        if current_day > 15:
+            logging.debug('Later than 15th so try also a next month edition.')
+            max_month_latest = max_month_latest + 1
+
+    ausgabe = str(int(ausgabe)+1)
+
+    continue_download = True
+    jahr_lastdl = jahr
+    ausgabe_lastdl = ausgabe
+
+    while continue_download:
+        logging.info(f"Trying now to download the latest version for (Year,Editions) (curMonth/Year)=>"
+                     f"({jahr}, {ausgabe}) ({current_month}/{current_year})")
+        logging.info(f"maxMonth, maxYear=>({max_month_latest}, {max_year_latest})")
+        filenamepattern_download, filenamepattern_local = filename_modification(
+            user_data[0]['filenamepattern_intarget'], user_data[0]['filenamepattern_fromserver'], ausgabe, jahr)
+        logging.debug(f'Filepattern(from server)     :[{filenamepattern_download}]')
+        logging.debug(f'Filepattern(local for target):[{filenamepattern_local}]')
+        if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}"):
+            logging.info(f"Skip download - already existing "
+                         f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
+        else:
+            logging.info(f"Process Download for "
+                         f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
+            download_edition(int(jahr), int(ausgabe), int(jahr),
+                             int(ausgabe), user_data[0]['filenamepattern_fromserver'],
+                             user_data[0]['filenamepattern_intarget'])
+        jahr_lastdl = jahr
+        ausgabe_lastdl = ausgabe
+
+        ausgabe = int(ausgabe)+1
+        if int(ausgabe) == 13:
+            logging.debug('Roll over in loop to next year')
+            ausgabe = 1
+            jahr = int(jahr)+1
+            if jahr > max_year_latest:
+                logging.debug(f'Too far in future({jahr})')
+                break
+
+        if int(str(max_year_latest) + str(max_month_latest).zfill(2)) >= int(str(jahr) + str(ausgabe).zfill(2)):
+            logging.debug('Loop fine - expecting still a next edition.')
+            continue
+        else:
+            logging.debug('Stop latest download loop - max reached.')
+            continue_download = False
+
+    user_data[0]['latestdownload'][0]['year'] = jahr_lastdl
+    user_data[0]['latestdownload'][0]['edition'] = ausgabe_lastdl
+
+    logging.info(f'Update JSON file ({json_config_file})')
+    with open(json_config_file, 'w') as outfile:
+        json.dump(user_data, outfile, indent=4, sort_keys=False)
+
 else:
     for editions in user_data[0]['editions']:
         for year in editions:
@@ -172,7 +249,7 @@ else:
                                  user_data[0]['filenamepattern_fromserver'],
                                  user_data[0]['filenamepattern_intarget'])
 
-logging.info(f"Last requested editon downloaded - give job some time (30s) to finish, for no good reason...")
+logging.info(f"Last requested edition downloaded - give job some time (30s) to finish, for no good reason...")
 sleep(30)
 driver.quit()
 logging.info('Job done')
