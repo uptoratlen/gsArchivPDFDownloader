@@ -78,6 +78,7 @@ This is a not working sample ! - Get the real one from code or release page.
     {
         "user": "<edit_your_username_here>",
         "password": "<edit_your_password_here>",
+        "log_level": "INFO",
         "downloadtarget": "c:\\download\\Gamestar-archive",
         "edition2d": "No",
         "skip20yearedition": "Yes",
@@ -120,6 +121,7 @@ This is a not working sample ! - Get the real one from code or release page.
 |:---|:---:|:---|:---:|
 | user      | string | your gs user name | v0.1|
 | password      | string   | your gs user password | v0.1|
+| log_level      | [debug/info/warning/error/critical]   | The loglevel just in case needed - info is default, debug is fallback | v0.6|
 | downloadtarget | string   | please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive" will look like "c:\\\\download\\\\Gamestar-archive". | v0.1|
 | edition2d | [Yes/No] | "No" will use the edition from the server like 1,2,3,4,5; "Yes" will create edition names like "01,02,03,04,05..." | v0.2|
 | ~~skip20yearedition~~ | deprecated  | not used anymore since V0.3; see ["editions"](#editions-in-gsjson) for more info | v0.3|

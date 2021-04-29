@@ -48,19 +48,23 @@ def filename_modification(filestring_download_in, filestring_local_in, edition_m
     filenamepattern_4target = filestring_local_in
     try:
         if user_data[0]['edition2d'].lower() == 'yes':
-            for filenamerepl in (("<ausgabe>", f"{edition_month:02d}"), ("<jahr>", edition_jahr)):
+            for filenamerepl in (("<ausgabe>", f"{edition_month.zfill(2)}"), ("<jahr>", edition_jahr)):
                 filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
-
         else:
             for filenamerepl in (("<ausgabe>", edition_month), ("<jahr>", edition_jahr)):
                 filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
-
         for filenamerepl in (("<ausgabe>", edition_month), ("<jahr>", edition_jahr)):
             filenamepattern_4download = filenamepattern_4download.replace(*filenamerepl)
+        logging.debug(f'Filename for Download:[{filenamepattern_4download}]')
+        logging.debug(f'Filename for Target:[{filenamepattern_4target}]')
         return filenamepattern_4download, filenamepattern_4target
     except TypeError as e:
-        logging.exception(f'TypeError Exception Raised -  str expected int found -{e}')
+        logging.exception(f'TypeError Exception Raised - str expected int found -{e}')
         exit(99)
+    except ValueError as e:
+        logging.exception(f'ValueError Exception Raised - {e}')
+        exit(99)
+
 
 def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                      filestring_download, filestring_target):
@@ -93,16 +97,13 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
         for ausgabe in range(ausgaben_start, ausgaben_end+1):
             filenamepattern_download, filenamepattern_local = filename_modification(
                 filestring_target, filestring_download, str(ausgabe), str(jahr))
-
             logging.debug(f'Filepattern(from server)     :[{filenamepattern_download}]')
             logging.debug(f'Filepattern(local for target):[{filenamepattern_local}]')
-
             if jahr == 2017 and ausgabe == 10:
                 logging.info(f"Warning - this is the current (by 11 March 2021) faulty download link of "
                              f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
                 logging.info(f"as by user request the download will be done;"
                              f"if it fails please remove edition from gs.json auf year 2017")
-
             if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}"):
                 logging.info(f"Skip download - already existing "
                              f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
@@ -185,6 +186,13 @@ def wait_for_download(filedownloadfullpath, timeout=30):
         logging.info('Download done successful')
         return True
 
+
+json_config_file = 'gs.json'
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+# Daten aus dem JSON File laden
+with open(json_config_file, 'r') as file:
+    user_data = json.loads(file.read())
+
 # Loggin set up
 LOG_FILE = os.path.dirname(os.path.abspath(__file__)) + '/gsArchivPDFDownloader.log'
 
@@ -192,8 +200,15 @@ logger = logging.getLogger('')
 logger.setLevel(logging.DEBUG)
 fh = logging.handlers.RotatingFileHandler(LOG_FILE, maxBytes=100000, backupCount=10)
 sh = logging.StreamHandler(sys.stdout)
-log_level = logging.getLevelName('INFO')
+loglvl_allowed = ['debug', 'info', 'warning', 'error', 'critical']
+
+log_level = logging.getLevelName('DEBUG')
+if user_data[0]['log_level'].lower() in loglvl_allowed:
+    log_level = logging.getLevelName(user_data[0]['log_level'].upper())
+else:
+    logging.debug("Switch back to Debug Level as user used a unexpected value in log level")
 logger.setLevel(log_level)
+
 if log_level == 10:
     formatter = logging.Formatter('[%(asctime)s] - %(levelname)s - [%(name)s.%(funcName)s:%(lineno)d] - %(message)s',
                               datefmt='%Y-%m-%d %H:%M:%S')
@@ -206,12 +221,6 @@ sh.setFormatter(formatter)
 logger.addHandler(fh)
 logger.addHandler(sh)
 
-json_config_file = 'gs.json'
-
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-# Daten aus dem JSON File laden
-with open(json_config_file, 'r') as file:
-    user_data = json.loads(file.read())
 
 parser = argparse.ArgumentParser(description='Download a certain year with all editions')
 parser.add_argument('-l', '--latest',  action='store_const',
@@ -291,8 +300,8 @@ elif args.latest:
     continue_download = True
     success = True
     while continue_download:
-        logging.info(f"Trying now to download the latest version for (Year,Editions) (curMonth/Year)=>"
-                     f"({jahr}, {ausgabe}) ({current_month}/{current_year})")
+        logging.info(f"Trying now to download the latest version for (Editions/Year) (curMonth/curYear)=>"
+                     f"({ausgabe}/{jahr}) ({current_month}/{current_year})")
         logging.debug(f"maxMonth, maxYear=>({max_month_latest}, {max_year_latest})")
         filenamepattern_download, filenamepattern_local = filename_modification(
             user_data[0]['filenamepattern_intarget'], user_data[0]['filenamepattern_fromserver'], ausgabe, jahr)
