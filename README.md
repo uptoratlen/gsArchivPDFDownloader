@@ -218,6 +218,7 @@ optional arguments:
   -l, --latest          try to download always the newest (starting from
                         2021-03)
   -y YEAR, --year YEAR  a single year in range [1997-2035]
+  -V, --version         show program's version number and exit
 ```
 #### --year
 eg. a commandline  ``` python gsArchivPDFDownloader.py -y 2020 ``` will download all editions from 2020.

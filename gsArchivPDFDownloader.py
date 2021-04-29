@@ -1,3 +1,6 @@
+__version_info__ = ('0','5b')
+__version__ = '.'.join(__version_info__)
+
 import sys
 from datetime import datetime
 import logging
@@ -226,10 +229,12 @@ parser = argparse.ArgumentParser(description='Download a certain year with all e
 parser.add_argument('-l', '--latest',  action='store_const',
                     const=True, help='try to download always the newest (starting from 2021-03)')
 parser.add_argument('-y', '--year', type=int, help='a single year in range [1997-2035]')
+parser.add_argument('-V', '--version', action='version', version="%(prog)s ("+__version__+")")
 args = parser.parse_args()
 if args.year and (args.year < 1997 or args.year > 2035):
     parser.error("Select a year within range 1997 to 2035")
 
+logging.info(f"gsArchivPDFDownloader Version:{__version__}")
 logging.info(f"Download location:{user_data[0]['downloadtarget']}")
 logging.info(f"filenamepattern_fromserver:{user_data[0]['filenamepattern_fromserver']}")
 logging.info(f"filenamepattern_intarget  :{user_data[0]['filenamepattern_intarget']}")
