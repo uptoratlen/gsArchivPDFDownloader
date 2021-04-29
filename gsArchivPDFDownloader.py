@@ -20,30 +20,79 @@ from time import sleep, time
 
 
 def filename_modification(filestring_download_in, filestring_local_in, edition_month, edition_jahr):
+    """Filenames must be altered according to the server/download and local/target definition in json file
+
+    Parameters
+    ----------
+    filestring_download_in : str
+        The filename string from json file for the download name
+    filestring_local_in : str
+        The filename string from json file for the target/local name
+    edition_month : str
+        The edition number aka month as string
+    edition_jahr : str
+        The edition year aka jahr as string
+
+    Returns
+    -------
+    filenamepattern_4download: str
+        the final name of the file used in the download url
+    filenamepattern_4target: str
+        the final name of the file used in the target folder
+
+
+    :raises TypeError: in case input is not str and exists
+
+    """
     filenamepattern_4download = filestring_download_in
     filenamepattern_4target = filestring_local_in
+    try:
+        if user_data[0]['edition2d'].lower() == 'yes':
+            for filenamerepl in (("<ausgabe>", f"{edition_month:02d}"), ("<jahr>", edition_jahr)):
+                filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
 
-    if user_data[0]['edition2d'].lower() == 'yes':
-        for filenamerepl in (("<ausgabe>", f"{edition_month:02d}"), ("<jahr>", str(edition_jahr))):
-            filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
+        else:
+            for filenamerepl in (("<ausgabe>", edition_month), ("<jahr>", edition_jahr)):
+                filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
 
-    else:
-        for filenamerepl in (("<ausgabe>", str(edition_month)), ("<jahr>", str(edition_jahr))):
-            filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
-
-    for filenamerepl in (("<ausgabe>", str(edition_month)), ("<jahr>", str(edition_jahr))):
-        filenamepattern_4download = filenamepattern_4download.replace(*filenamerepl)
-    return filenamepattern_4download, filenamepattern_4target
-
+        for filenamerepl in (("<ausgabe>", edition_month), ("<jahr>", edition_jahr)):
+            filenamepattern_4download = filenamepattern_4download.replace(*filenamerepl)
+        return filenamepattern_4download, filenamepattern_4target
+    except TypeError as e:
+        logging.exception(f'TypeError Exception Raised -  str expected int found -{e}')
+        exit(99)
 
 def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                      filestring_download, filestring_target):
+    """The main download function
+
+    Parameters
+    ----------
+    jahr_start : int
+        Start year of requested downloads
+    ausgaben_start : int
+        Start month/edition of requested downloads
+    jahr_end : int
+        End year of requested downloads
+    ausgaben_end : int
+        End month/edition of requested downloads
+    filestring_download : str
+        The filename string from json file for the download name
+    filestring_target : str
+        The filename string from json file for the target/local name
+
+    Returns
+    -------
+    bool
+        False in case of a not existing edition
+
+    """
     wait_de = WebDriverWait(driver, 10)
     dl_success = True
     for jahr in range(jahr_start, jahr_end+1):
         for ausgabe in range(ausgaben_start, ausgaben_end+1):
             filenamepattern_download, filenamepattern_local = filename_modification(
-                filestring_target, filestring_download, ausgabe, jahr)
+                filestring_target, filestring_download, str(ausgabe), str(jahr))
 
             logging.debug(f'Filepattern(from server)     :[{filenamepattern_download}]')
             logging.debug(f'Filepattern(local for target):[{filenamepattern_local}]')
@@ -102,6 +151,22 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
     return dl_success
 
 def wait_for_download(filedownloadfullpath, timeout=30):
+    """Will check if a partial download still exists
+
+    Parameters
+    ----------
+    filedownloadfullpath: str
+        the full download name of the target/downloaded file, absolutepath
+    timeout: int, optional
+        Timeout given for wait until no partial files are seen anymore
+
+    Returns
+    -------
+    bool
+        False : Partial donwloaded file still seen after timeout
+        True  : Download is complete, no partial files seen
+
+    """
     logging.debug(f'Download timeout is:[{timeout}]')
     time_out = time() + 2
     while not os.path.exists(f'{filedownloadfullpath}.part') and time() < time_out:
@@ -119,7 +184,6 @@ def wait_for_download(filedownloadfullpath, timeout=30):
     else:
         logging.info('Download done successful')
         return True
-
 
 # Loggin set up
 LOG_FILE = os.path.dirname(os.path.abspath(__file__)) + '/gsArchivPDFDownloader.log'
@@ -186,7 +250,7 @@ wait = WebDriverWait(driver, 20)
 # open browser and login
 driver.get(url)
 logging.info(f"Browser now started with URL:{url} - "
-             f"try now to log in with user/password [{user_data[0]['user']}/******]")
+             f"try now to log in with user/password [xxxxxxxxxxxxxxxxxxx/************************]")
 
 wait.until(ec.visibility_of_element_located((By.LINK_TEXT, 'einloggen')))
 driver.find_element_by_link_text('einloggen').click()
@@ -198,27 +262,25 @@ driver.find_element_by_css_selector('button.btn:nth-child(9)').click()
 if args.year:
     year = args.year
     for edition in range(1, 14):
-        download_edition(int(year), int(edition), int(year),
-                         int(edition), user_data[0]['filenamepattern_fromserver'],
+        download_edition(int(year), edition, int(year),
+                         edition, user_data[0]['filenamepattern_fromserver'],
                          user_data[0]['filenamepattern_intarget'])
 elif args.latest:
     current_year = datetime.now().year
-    # current_year = 2020
     current_month = datetime.now().month
-    # current_month = 11
     current_day = datetime.now().day
     max_year_latest = datetime.now().year
     max_month_latest = datetime.now().month
 
     jahr = user_data[0]['latestdownload'][0]['year']
     ausgabe = user_data[0]['latestdownload'][0]['edition']
-    jahr_lastdl = str(jahr)
-    ausgabe_lastdl = str(ausgabe)
+    jahr_lastdl = jahr
+    ausgabe_lastdl = ausgabe
 
     if int(ausgabe) == 12:
         logging.debug('Latest downloaded edition was a 12, rollover to next year.')
-        jahr = int(jahr) + 1
-        ausgabe = 0
+        jahr = str(int(jahr) + 1)
+        ausgabe = str(0)
         max_month_latest = 1
     else:
         if current_day > 15:
@@ -226,7 +288,6 @@ elif args.latest:
             max_month_latest = max_month_latest + 1
 
     ausgabe = str(int(ausgabe)+1)
-
     continue_download = True
     success = True
     while continue_download:
@@ -250,15 +311,15 @@ elif args.latest:
         logging.debug(f"success [{success}]")
         if success:
             logging.debug(f"Last success download [{ausgabe_lastdl}/{jahr_lastdl}]")
-            jahr_lastdl = str(jahr)
-            ausgabe_lastdl = str(ausgabe)
+            jahr_lastdl = jahr
+            ausgabe_lastdl = ausgabe
 
-        ausgabe = int(ausgabe)+1
+        ausgabe = str(int(ausgabe)+1)
         if int(ausgabe) == 13:
             logging.debug('Roll over in loop to next year')
-            ausgabe = 1
-            jahr = int(jahr)+1
-            if jahr > max_year_latest:
+            ausgabe = str(1)
+            jahr = str(int(jahr)+1)
+            if int(jahr) > max_year_latest:
                 logging.debug(f'Too far in future({jahr})')
                 break
 
