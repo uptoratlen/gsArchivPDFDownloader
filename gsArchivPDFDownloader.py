@@ -1,4 +1,4 @@
-__version_info__ = ('0','5c')
+__version_info__ = ('0', '5', '4')
 __version__ = '.'.join(__version_info__)
 
 import sys
@@ -56,10 +56,11 @@ def filename_modification(filestring_download_in, filestring_local_in, edition_m
         else:
             for filenamerepl in (("<ausgabe>", edition_month.lstrip('0')), ("<jahr>", edition_jahr)):
                 filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
+
         for filenamerepl in (("<ausgabe>", edition_month.lstrip('0')), ("<jahr>", edition_jahr)):
             filenamepattern_4download = filenamepattern_4download.replace(*filenamerepl)
-        logging.debug(f'Filename for Download:[{filenamepattern_4download}]')
-        logging.debug(f'Filename for Target:[{filenamepattern_4target}]')
+        logging.info(f'Filename for Download:[{filenamepattern_4download}]')
+        logging.info(f'Filename for Target(modified):[{filenamepattern_4target}]')
         return filenamepattern_4download, filenamepattern_4target
     except TypeError as e:
         logging.exception(f'TypeError Exception Raised - str expected int found -{e}')
@@ -100,8 +101,6 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
         for ausgabe in range(ausgaben_start, ausgaben_end+1):
             filenamepattern_download, filenamepattern_local = filename_modification(
                 filestring_target, filestring_download, str(ausgabe), str(jahr), user_data[0]['edition2d'])
-            logging.debug(f'Filepattern(from server)     :[{filenamepattern_download}]')
-            logging.debug(f'Filepattern(local for target):[{filenamepattern_local}]')
             if jahr == 2017 and ausgabe == 10:
                 logging.info(f"Warning - this is the current (by 11 March 2021) faulty download link of "
                              f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
@@ -115,7 +114,8 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                 if os.path.exists(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}"):
                     os.remove(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}")
                 sleep(5)
-                logging.info(f'Try now download of : Jahr {jahr} and Ausgabe {ausgabe} - URL:https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahr}&bkm={ausgabe}')
+                logging.info(f'Try now download of : Jahr {jahr} and Ausgabe {ausgabe} '
+                             f'- URL:https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahr}&bkm={ausgabe}')
                 driver.get(f'https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahr}&bkm={ausgabe}')
                 sleep(8)
                 try:
@@ -138,12 +138,7 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                 result = wait_for_download(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}",
                                            timeout=user_data[0]['downloadtimeout'])
                 if result is True:
-                    if not os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}"):
-                        os.mkdir(f"{user_data[0]['downloadtarget']}/{jahr}")
-                    # Give it time to sync to disk - not clear
-                    sleep(2)
-                    os.rename(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}",
-                              f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}")
+                    move_downloaded(f"{user_data[0]['downloadtarget']}", jahr, filenamepattern_download, filenamepattern_local)
                 else:
                     logging.warning('Download not yet completed - not possible to move by now')
             except TimeoutException as t:
@@ -174,12 +169,11 @@ def wait_for_download(filedownloadfullpath, timeout=30):
     logging.debug(f'Download timeout is:[{timeout}]')
     time_out = time() + 2
     while not os.path.exists(f'{filedownloadfullpath}.part') and time() < time_out:
-        logging.debug(f'{filedownloadfullpath}.part not yet seen- waiting for first download')
-
+        logging.info(f'{filedownloadfullpath}.part not yet seen- waiting for first download')
         sleep(2)
     time_out = time() + timeout
     while os.path.exists(f'{filedownloadfullpath}.part') and time() < time_out:
-        logging.debug(f'{filedownloadfullpath}.part Seen- waiting')
+        logging.info(f'{filedownloadfullpath}.part Seen- waiting')
         sleep(1.5)
     if os.path.exists(f'{filedownloadfullpath}.part'):
         logging.warning('Download still in progress - may need recheck - aborting wait to continue'
@@ -188,6 +182,48 @@ def wait_for_download(filedownloadfullpath, timeout=30):
     else:
         logging.info('Download done successful')
         return True
+
+def move_downloaded(targetfolder, year, fn_downloaded, fn_target, timeout=30):
+    """Will check if a partial download still exists
+
+    Parameters
+    ----------
+    targetfolder: str
+        absulute path of target folder no trailing path seperator
+    year: int
+        year; will be used as a subfolder
+    fn_downloaded: str
+        the name of the downloaded file
+    fn_target: str
+        the name of the file in the target folder
+    timeout: int
+        a grace time for seeing the file on the disk
+
+    Returns
+    -------
+    bool
+        False : a error occurred while moving file
+        True  : No error detected
+
+    """
+
+    logging.info(f'Trying now to move the downloaded file with a timeout of:[{timeout}]')
+    if not os.path.exists(f"{targetfolder}/{year}"):
+        logging.info(f"Create folder [{targetfolder}/{year}]")
+        os.makedirs(f"{targetfolder}/{year}")
+
+    time_out = time() + timeout
+    while not os.path.exists(f'{targetfolder}/{fn_downloaded}') and time() < time_out:
+        logging.info(f'Downloaded file [{targetfolder}/{fn_downloaded}] still not seen- waiting')
+        sleep(1.5)
+    if os.path.exists(f'{targetfolder}/{fn_downloaded}'):
+        os.rename(f'{targetfolder}/{fn_downloaded}',
+                  f'{targetfolder}/{year}/{fn_target}')
+        logging.info('Move Download done successful')
+        return True
+    else:
+        logging.warning(f'Move not performed as file [{targetfolder}/{fn_downloaded}] is not seen.')
+        return False
 
 
 if __name__ == '__main__':
@@ -214,17 +250,16 @@ if __name__ == '__main__':
     logger.setLevel(log_level)
 
     if log_level == 10:
-        formatter = logging.Formatter('[%(asctime)s] - %(levelname)s - [%(name)s.%(funcName)s:%(lineno)d] - %(message)s',
-                                  datefmt='%Y-%m-%d %H:%M:%S')
+        formatter = logging.Formatter('[%(asctime)s] - %(levelname)s - [%(name)s.%(funcName)s:%(lineno)d] '
+                                      '- %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     else:
         formatter = logging.Formatter('%(asctime)s:[%(levelname)-5.5s] %(message)s',
-                                  datefmt='%Y-%m-%d %H:%M:%S')
+                                      datefmt='%Y-%m-%d %H:%M:%S')
 
     fh.setFormatter(formatter)
     sh.setFormatter(formatter)
     logger.addHandler(fh)
     logger.addHandler(sh)
-
 
     parser = argparse.ArgumentParser(description='Download a certain year with all editions')
     parser.add_argument('-l', '--latest',  action='store_const',
@@ -241,6 +276,7 @@ if __name__ == '__main__':
     logging.info(f"filenamepattern_intarget  :{user_data[0]['filenamepattern_intarget']}")
 
     if not os.path.exists(f"{user_data[0]['downloadtarget']}"):
+        logging.info(f"Create folder [{user_data[0]['downloadtarget']}]")
         os.makedirs(f"{user_data[0]['downloadtarget']}")
 
     profile: FirefoxProfile = webdriver.FirefoxProfile()
@@ -255,7 +291,7 @@ if __name__ == '__main__':
 
     options = Options_FF()
     options.headless = False
-    if args.latest and user_data[0]['browser_display_on_latest'].lower() =="no":
+    if args.latest and user_data[0]['browser_display_on_latest'].lower() == "no":
         options.headless = True
     driver = webdriver.Firefox(options=options, firefox_profile=profile)
 
@@ -310,7 +346,8 @@ if __name__ == '__main__':
                          f"({ausgabe}/{jahr}) ({current_month}/{current_year})")
             logging.debug(f"maxMonth, maxYear=>({max_month_latest}, {max_year_latest})")
             filenamepattern_download, filenamepattern_local = filename_modification(
-                user_data[0]['filenamepattern_intarget'], user_data[0]['filenamepattern_fromserver'], ausgabe, jahr, user_data[0]['edition2d'])
+                user_data[0]['filenamepattern_intarget'], user_data[0]['filenamepattern_fromserver'],
+                ausgabe, jahr, user_data[0]['edition2d'])
             logging.debug(f'Filepattern(from server)     :[{filenamepattern_download}]')
             logging.debug(f'Filepattern(local for target):[{filenamepattern_local}]')
             if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}"):
@@ -320,9 +357,9 @@ if __name__ == '__main__':
             else:
                 logging.info(f"Process Download for "
                              f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
-                success = download_edition(int(jahr), int(ausgabe), int(jahr),
-                                 int(ausgabe), user_data[0]['filenamepattern_fromserver'],
-                                 user_data[0]['filenamepattern_intarget'])
+                success = download_edition(int(jahr), int(ausgabe), int(jahr), int(ausgabe),
+                                           user_data[0]['filenamepattern_fromserver'],
+                                           user_data[0]['filenamepattern_intarget'])
             logging.debug(f"success [{success}]")
             if success:
                 logging.debug(f"Last success download [{ausgabe_lastdl}/{jahr_lastdl}]")
@@ -366,4 +403,3 @@ if __name__ == '__main__':
     sleep(30)
     driver.quit()
     logging.info('Job done')
-

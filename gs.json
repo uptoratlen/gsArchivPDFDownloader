@@ -4,7 +4,7 @@
         "password":"<edit_your_password_here>",
         "log_level": "INFO",
         "downloadtarget": "c:\\download\\Gamestar-archive",
-        "edition2d": "No",
+        "edition2d": "Yes",
         "downloadtimeout": 240,
         "filenamepattern_intarget": "GameStar Nr. <ausgabe>_<jahr>.pdf",
         "filenamepattern_fromserver": "GameStar Nr. <ausgabe>_<jahr>.pdf",
