@@ -1,4 +1,4 @@
-__version_info__ = ('0', '5', '4')
+__version_info__ = ('0', '5', '5')
 __version__ = '.'.join(__version_info__)
 
 import sys
@@ -22,7 +22,7 @@ import argparse
 from time import sleep, time
 
 
-def filename_modification(filestring_download_in, filestring_local_in, edition_month, edition_jahr, edition2d="no"):
+def filename_modification(filestring_downloaded, filestring_target, edition_month, edition_jahr, edition2d="no"):
     """Filenames must be altered according to the server/download and local/target definition in json file
 
     Parameters
@@ -47,21 +47,22 @@ def filename_modification(filestring_download_in, filestring_local_in, edition_m
     :raises TypeError: in case input is not str and exists
 
     """
-    filenamepattern_4download = filestring_download_in
-    filenamepattern_4target = filestring_local_in
+    logging.debug(f'Filename after Download on disk :[{filestring_downloaded}]')
+    logging.debug(f'Filename for Target(modified)   :[{filestring_target}]')
     try:
         if edition2d.lower() == 'yes':
             for filenamerepl in (("<ausgabe>", f"{'{:0>2}'.format(edition_month)}"), ("<jahr>", edition_jahr)):
-                filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
+                filestring_target = filestring_target.replace(*filenamerepl)
         else:
             for filenamerepl in (("<ausgabe>", edition_month.lstrip('0')), ("<jahr>", edition_jahr)):
-                filenamepattern_4target = filenamepattern_4target.replace(*filenamerepl)
+                filestring_target = filestring_target.replace(*filenamerepl)
 
         for filenamerepl in (("<ausgabe>", edition_month.lstrip('0')), ("<jahr>", edition_jahr)):
-            filenamepattern_4download = filenamepattern_4download.replace(*filenamerepl)
-        logging.info(f'Filename for Download:[{filenamepattern_4download}]')
-        logging.info(f'Filename for Target(modified):[{filenamepattern_4target}]')
-        return filenamepattern_4download, filenamepattern_4target
+            filestring_downloaded = filestring_downloaded.replace(*filenamerepl)
+
+        logging.info(f'Filename after Download on disk :[{filestring_downloaded}]')
+        logging.info(f'Filename for Target(modified)   :[{filestring_target}]')
+        return filestring_downloaded, filestring_target
     except TypeError as e:
         logging.exception(f'TypeError Exception Raised - str expected int found -{e}')
         exit(99)
@@ -100,7 +101,7 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
     for jahr in range(jahr_start, jahr_end+1):
         for ausgabe in range(ausgaben_start, ausgaben_end+1):
             filenamepattern_download, filenamepattern_local = filename_modification(
-                filestring_target, filestring_download, str(ausgabe), str(jahr), user_data[0]['edition2d'])
+                filestring_download, filestring_target, str(ausgabe), str(jahr), user_data[0]['edition2d'])
             if jahr == 2017 and ausgabe == 10:
                 logging.info(f"Warning - this is the current (by 11 March 2021) faulty download link of "
                              f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
@@ -189,7 +190,7 @@ def move_downloaded(targetfolder, year, fn_downloaded, fn_target, timeout=30):
     Parameters
     ----------
     targetfolder: str
-        absulute path of target folder no trailing path seperator
+        absolute path of target folder no trailing path separator
     year: int
         year; will be used as a subfolder
     fn_downloaded: str
@@ -346,7 +347,7 @@ if __name__ == '__main__':
                          f"({ausgabe}/{jahr}) ({current_month}/{current_year})")
             logging.debug(f"maxMonth, maxYear=>({max_month_latest}, {max_year_latest})")
             filenamepattern_download, filenamepattern_local = filename_modification(
-                user_data[0]['filenamepattern_intarget'], user_data[0]['filenamepattern_fromserver'],
+                user_data[0]['filenamepattern_fromserver'], user_data[0]['filenamepattern_intarget'],
                 ausgabe, jahr, user_data[0]['edition2d'])
             logging.debug(f'Filepattern(from server)     :[{filenamepattern_download}]')
             logging.debug(f'Filepattern(local for target):[{filenamepattern_local}]')
