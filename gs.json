@@ -1,7 +1,5 @@
 [
     {
-        "user":"<edit_your_username_here>",
-        "password":"<edit_your_password_here>",
         "log_level": "INFO",
         "downloadtarget": "c:\\download\\Gamestar-archive",
         "edition2d": "Yes",

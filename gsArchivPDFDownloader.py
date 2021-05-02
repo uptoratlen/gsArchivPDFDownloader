@@ -1,4 +1,4 @@
-__version_info__ = ('0', '5', '5')
+__version_info__ = ('0', '5', '6')
 __version__ = '.'.join(__version_info__)
 
 import sys
@@ -170,11 +170,11 @@ def wait_for_download(filedownloadfullpath, timeout=30):
     logging.debug(f'Download timeout is:[{timeout}]')
     time_out = time() + 2
     while not os.path.exists(f'{filedownloadfullpath}.part') and time() < time_out:
-        logging.info(f'{filedownloadfullpath}.part not yet seen- waiting for first download')
+        logging.debug(f'{filedownloadfullpath}.part not yet seen- waiting for first download')
         sleep(2)
     time_out = time() + timeout
     while os.path.exists(f'{filedownloadfullpath}.part') and time() < time_out:
-        logging.info(f'{filedownloadfullpath}.part Seen- waiting')
+        logging.debug(f'{filedownloadfullpath}.part Seen- waiting')
         sleep(1.5)
     if os.path.exists(f'{filedownloadfullpath}.part'):
         logging.warning('Download still in progress - may need recheck - aborting wait to continue'
@@ -233,6 +233,10 @@ if __name__ == '__main__':
     # Daten aus dem JSON File laden
     with open(json_config_file, 'r') as file:
         user_data = json.loads(file.read())
+    json_credential_file = 'gs_credential.json'
+    # Daten aus dem JSON File laden
+    with open(json_credential_file, 'r') as file:
+        user_credential = json.loads(file.read())
 
     # Loggin set up
     LOG_FILE = os.path.dirname(os.path.abspath(__file__)) + '/gsArchivPDFDownloader.log'
@@ -307,17 +311,19 @@ if __name__ == '__main__':
     wait.until(ec.visibility_of_element_located((By.LINK_TEXT, 'einloggen')))
     driver.find_element_by_link_text('einloggen').click()
     wait.until(ec.visibility_of_element_located((By.ID, 'loginbox-login-username')))
-    driver.find_element_by_id('loginbox-login-username').send_keys(user_data[0]['user'])
-    driver.find_element_by_id('loginbox-login-password').send_keys(user_data[0]['password'])
+    driver.find_element_by_id('loginbox-login-username').send_keys(user_credential[0]['user'])
+    driver.find_element_by_id('loginbox-login-password').send_keys(user_credential[0]['password'])
     driver.find_element_by_css_selector('button.btn:nth-child(9)').click()
 
     if args.year:
+        logging.info('Run Type: Year')
         year = args.year
         for edition in range(1, 14):
             download_edition(int(year), edition, int(year),
                              edition, user_data[0]['filenamepattern_fromserver'],
                              user_data[0]['filenamepattern_intarget'])
     elif args.latest:
+        logging.info('Run Type: Latest')
         current_year = datetime.now().year
         current_month = datetime.now().month
         current_day = datetime.now().day
@@ -392,6 +398,7 @@ if __name__ == '__main__':
             json.dump(user_data, outfile, indent=4, sort_keys=False)
 
     else:
+        logging.info('Run Type: Editions')
         for editions in user_data[0]['editions']:
             for year in editions:
                 logging.info(f"(Year,Editions)=>({year}, {editions[year]})")
