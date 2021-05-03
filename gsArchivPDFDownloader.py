@@ -1,8 +1,13 @@
 __version_info__ = ('0', '5', '6')
 __version__ = '.'.join(__version_info__)
 
-import sys
+import argparse
 from datetime import datetime
+import json
+import os
+import sys
+from time import sleep, time
+
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -14,12 +19,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException
-
-import os
-import json
-
-import argparse
-from time import sleep, time
 
 
 def filename_modification(filestring_downloaded, filestring_target, edition_month, edition_jahr, edition2d="no"):
@@ -98,48 +97,45 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
     """
     wait_de = WebDriverWait(driver, 10)
     dl_success = True
-    for jahr in range(jahr_start, jahr_end+1):
-        for ausgabe in range(ausgaben_start, ausgaben_end+1):
-            filenamepattern_download, filenamepattern_local = filename_modification(
-                filestring_download, filestring_target, str(ausgabe), str(jahr), user_data[0]['edition2d'])
-            if jahr == 2017 and ausgabe == 10:
+    for jahrdl in range(jahr_start, jahr_end+1):
+        for ausgabedl in range(ausgaben_start, ausgaben_end+1):
+            _filenamepattern_download, _filenamepattern_local = filename_modification(
+                filestring_download, filestring_target, str(ausgabedl), str(jahrdl), user_data[0]['edition2d'])
+            if jahrdl == 2017 and ausgabedl == 10:
                 logging.info(f"Warning - this is the current (by 11 March 2021) faulty download link of "
-                             f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
+                             f"'{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}'")
                 logging.info(f"as by user request the download will be done;"
                              f"if it fails please remove edition from gs.json auf year 2017")
-            if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}"):
+            if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}"):
                 logging.info(f"Skip download - already existing "
-                             f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
+                             f"'{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}'")
                 continue
             try:
-                if os.path.exists(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}"):
-                    os.remove(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}")
+                if os.path.exists(f"{user_data[0]['downloadtarget']}/{_filenamepattern_download}"):
+                    os.remove(f"{user_data[0]['downloadtarget']}/{_filenamepattern_download}")
                 sleep(5)
-                logging.info(f'Try now download of : Jahr {jahr} and Ausgabe {ausgabe} '
-                             f'- URL:https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahr}&bkm={ausgabe}')
-                driver.get(f'https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahr}&bkm={ausgabe}')
+                logging.info(f'Try now download of : Jahr {jahrdl} and Ausgabe {ausgabedl} '
+                             f'- URL:https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahrdl}&bkm={ausgabedl}')
+                driver.get(f'https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahrdl}&bkm={ausgabedl}')
                 sleep(8)
                 try:
                     save_button = wait_de.until(ec.visibility_of_element_located((By.XPATH,
                                                                                   '//*[@id="top_menu_save"]')))
                 except TimeoutException:
-                    if args.latest:
-                        logging.warning('Looks like the page not found is displayed - this edition failed')
-                        dl_success = False
-                        continue
-                    else:
-                        logging.warning('Looks like the page not found is displayed - skip this edition')
-                        continue
+                    logging.warning('Looks like the page not found is displayed - this edition failed')
+                    dl_success = False
+                    continue
                 ActionChains(driver).move_to_element(save_button).click().perform()
                 wait_de.until(ec.visibility_of_element_located((By.XPATH, '//p[@class="title"]')))
 
                 wait_de.until(ec.visibility_of_element_located((By.XPATH, "//a[contains(@href, 'complete.pdf')]")))
                 driver.find_element_by_xpath("//a[contains(@href, 'complete.pdf')]").click()
                 sleep(1)
-                result = wait_for_download(f"{user_data[0]['downloadtarget']}/{filenamepattern_download}",
-                                           timeout=user_data[0]['downloadtimeout'])
-                if result is True:
-                    move_downloaded(f"{user_data[0]['downloadtarget']}", jahr, filenamepattern_download, filenamepattern_local)
+                resultdl1 = wait_for_download(f"{user_data[0]['downloadtarget']}/{_filenamepattern_download}",
+                                              timeout=user_data[0]['downloadtimeout'])
+                if resultdl1 is True:
+                    move_downloaded(f"{user_data[0]['downloadtarget']}", jahrdl,
+                                    _filenamepattern_download, _filenamepattern_local)
                 else:
                     logging.warning('Download not yet completed - not possible to move by now')
             except TimeoutException as t:
@@ -149,6 +145,7 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
                 logging.exception(f'Exception:{e}')
                 driver.quit()
     return dl_success
+
 
 def wait_for_download(filedownloadfullpath, timeout=30):
     """Will check if a partial download still exists
@@ -184,20 +181,21 @@ def wait_for_download(filedownloadfullpath, timeout=30):
         logging.info('Download done successful')
         return True
 
-def move_downloaded(targetfolder, year, fn_downloaded, fn_target, timeout=30):
+
+def move_downloaded(_targetfolder, _year, _fn_downloaded, _fn_target, _timeout=30):
     """Will check if a partial download still exists
 
     Parameters
     ----------
-    targetfolder: str
+    _targetfolder: str
         absolute path of target folder no trailing path separator
-    year: int
+    _year: int
         year; will be used as a subfolder
-    fn_downloaded: str
+    _fn_downloaded: str
         the name of the downloaded file
-    fn_target: str
+    _fn_target: str
         the name of the file in the target folder
-    timeout: int
+    _timeout: int
         a grace time for seeing the file on the disk
 
     Returns
@@ -208,22 +206,22 @@ def move_downloaded(targetfolder, year, fn_downloaded, fn_target, timeout=30):
 
     """
 
-    logging.info(f'Trying now to move the downloaded file with a timeout of:[{timeout}]')
-    if not os.path.exists(f"{targetfolder}/{year}"):
-        logging.info(f"Create folder [{targetfolder}/{year}]")
-        os.makedirs(f"{targetfolder}/{year}")
+    logging.info(f'Trying now to move the downloaded file with a _timeout of:[{_timeout}]')
+    if not os.path.exists(f"{_targetfolder}/{_year}"):
+        logging.info(f"Create folder [{_targetfolder}/{_year}]")
+        os.makedirs(f"{_targetfolder}/{_year}")
 
-    time_out = time() + timeout
-    while not os.path.exists(f'{targetfolder}/{fn_downloaded}') and time() < time_out:
-        logging.info(f'Downloaded file [{targetfolder}/{fn_downloaded}] still not seen- waiting')
+    time_out = time() + _timeout
+    while not os.path.exists(f'{_targetfolder}/{_fn_downloaded}') and time() < time_out:
+        logging.info(f'Downloaded file [{_targetfolder}/{_fn_downloaded}] still not seen- waiting')
         sleep(1.5)
-    if os.path.exists(f'{targetfolder}/{fn_downloaded}'):
-        os.rename(f'{targetfolder}/{fn_downloaded}',
-                  f'{targetfolder}/{year}/{fn_target}')
+    if os.path.exists(f'{_targetfolder}/{_fn_downloaded}'):
+        os.rename(f'{_targetfolder}/{_fn_downloaded}',
+                  f'{_targetfolder}/{_year}/{_fn_target}')
         logging.info('Move Download done successful')
         return True
     else:
-        logging.warning(f'Move not performed as file [{targetfolder}/{fn_downloaded}] is not seen.')
+        logging.warning(f'Move not performed as file [{_targetfolder}/{_fn_downloaded}] is not seen.')
         return False
 
 
@@ -280,6 +278,13 @@ if __name__ == '__main__':
     logging.info(f"filenamepattern_fromserver:{user_data[0]['filenamepattern_fromserver']}")
     logging.info(f"filenamepattern_intarget  :{user_data[0]['filenamepattern_intarget']}")
 
+    for x in [user_credential[0]['user'], user_credential[0]['password']]:
+        if 'edit_your_' in x:
+            logging.error(f"Sorry, you forget to edit the gs_credential.json - "
+                          f"it still contains the dummy user/password "
+                          f"[{user_credential[0]['user']}/{user_credential[0]['password']}].")
+            exit(98)
+
     if not os.path.exists(f"{user_data[0]['downloadtarget']}"):
         logging.info(f"Create folder [{user_data[0]['downloadtarget']}]")
         os.makedirs(f"{user_data[0]['downloadtarget']}")
@@ -318,10 +323,22 @@ if __name__ == '__main__':
     if args.year:
         logging.info('Run Type: Year')
         year = args.year
+        abortflag = 0
         for edition in range(1, 14):
-            download_edition(int(year), edition, int(year),
-                             edition, user_data[0]['filenamepattern_fromserver'],
-                             user_data[0]['filenamepattern_intarget'])
+            result = download_edition(int(year), edition, int(year),
+                                      edition, user_data[0]['filenamepattern_fromserver'],
+                                      user_data[0]['filenamepattern_intarget'])
+            if result is True:
+                abortflag = 0
+            else:
+                abortflag += 1
+                logging.info(f"As edition was not found; increase abort counter "
+                             f"[{abortflag}/{user_data[0]['abortlimit']}]")
+
+            if abortflag >= user_data[0]['abortlimit']:
+                logging.info(f'The abort limitcounter reached the maxmium allwed and will now abort the run')
+                break
+
     elif args.latest:
         logging.info('Run Type: Latest')
         current_year = datetime.now().year

@@ -4,6 +4,7 @@
         "downloadtarget": "c:\\download\\Gamestar-archive",
         "edition2d": "Yes",
         "downloadtimeout": 240,
+        "abortlimit": 2,
         "filenamepattern_intarget": "GameStar Nr. <ausgabe>_<jahr>.pdf",
         "filenamepattern_fromserver": "GameStar Nr. <ausgabe>_<jahr>.pdf",
         "latestdownload": [
