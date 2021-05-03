@@ -90,8 +90,8 @@ This is a not working sample ! - Get the real one from code or release page.
 ```
 | Name          | value allowed        | Remark|introduced/removed
 |:---|:---:|:---|:---:|
-| user      | string | your gs user name | v0.1|
-| password      | string   | your gs user password | v0.1|
+| user      | string | your gs user name | v0.5.6|
+| password      | string   | your gs user password | v0.5.6|
 
 
 ## Edit gs.json
@@ -246,10 +246,12 @@ optional arguments:
 ```
 #### --year
 eg. a commandline  ``` python gsArchivPDFDownloader.py -y 2020 ``` will download all editions from 2020.
-In case the commandline is used due to 2017 each year will try to get a 13 editions. Yes I know that does not make much sense, but let me fix that in a future edition in a better way.
+In case the commandline is used due to 2017 each year will try to get a 13 editions.  
+Yes I know that does not make much sense, but let me fix that in a future edition in a better way.  
 This run type uses the "abortlimit" of the gs.json file to trigger an abort if the number is reached.  
-in case the number is 2 and the flow is like this: success - fail - fail > Abort 
-in case the number is 2 and the flow is like this: success - fail - success > the run will continue
+in case the number is 2 and the flow is like this: success - fail - fail > Abort  
+in case the number is 2 and the flow is like this: success - fail - success > the run will continue  
+
 
 
 #### --latest
