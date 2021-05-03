@@ -226,13 +226,22 @@ def move_downloaded(_targetfolder, _year, _fn_downloaded, _fn_target, _timeout=3
 
 
 if __name__ == '__main__':
-    json_config_file = 'gs.json'
+
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    # Daten aus dem JSON File laden
+
+    # read config from json file
+    json_config_file = 'gs.json'
+    if not os.path.exists(json_config_file):
+        logging.error(f'Sorry, but config file [{json_config_file}] was not found in dir.')
+        exit(96)
     with open(json_config_file, 'r') as file:
         user_data = json.loads(file.read())
+
+    # read credentials from json
     json_credential_file = 'gs_credential.json'
-    # Daten aus dem JSON File laden
+    if not os.path.exists(json_credential_file):
+        logging.error(f'Sorry, but credential file [{json_credential_file}] was not found in dir.')
+        exit(96)
     with open(json_credential_file, 'r') as file:
         user_credential = json.loads(file.read())
 
