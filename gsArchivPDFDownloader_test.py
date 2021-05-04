@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from os import path
 
-from gsArchivPDFDownloader import filename_modification, wait_for_download, move_downloaded
+from gsArchivPDFDownloader import filename_modification, wait_for_download, move_downloaded, json_config_check
 
 
 class MyTestCase(unittest.TestCase):
@@ -81,6 +81,30 @@ class MyTestCase(unittest.TestCase):
     def test_move_downloaded_t2(self):
         # check in case source file is existing
         self.assertEqual(True, move_downloaded(self.test_dir, 1999, self.testfilename, self.testfilename, 3))
+
+    def test_json_config_check_t1(self):
+        # check if exist is not called if all keys are found
+        self.json_test_dict = {'log_level': 'INFO', 'downloadtarget': 'c:\\download\\Gamestar-archive', 'edition2d': 'Yes',
+         'downloadtimeout': 240, 'abortlimit': 2, 'filenamepattern_intarget': 'GameStar Nr. <ausgabe>_<jahr>.pdf',
+         'filenamepattern_fromserver': 'GameStar Nr. <ausgabe>_<jahr>.pdf',
+         'latestdownload': [{'year': '2021', 'edition': '5'}], 'browser_display_on_latest': 'no',
+         'skip_editions': [{'2017': '10'}]}
+        self.json_test_key_list = ['log_level', 'downloadtarget', 'edition2d', 'downloadtimeout', 'abortlimit', 'filenamepattern_intarget',
+             'filenamepattern_fromserver', 'latestdownload', 'browser_display_on_latest', 'skip_editions']
+        self.assertEqual(True, json_config_check(self.json_test_dict, self.json_test_key_list))
+
+
+    def test_json_config_check_t2(self):
+        # check if exist is called if one key is not found
+        self.json_test_dict = {'log_level': 'INFO', 'downloadtarget': 'c:\\download\\Gamestar-archive', 'edition2d': 'Yes',
+         'downloadtimeout': 240, 'abortlimit': 2, 'filenamepattern_intarget': 'GameStar Nr. <ausgabe>_<jahr>.pdf',
+         'filenamepattern_fromserver': 'GameStar Nr. <ausgabe>_<jahr>.pdf',
+         'latestdownload': [{'year': '2021', 'edition': '5'}], 'browser_display_on_latest': 'no',
+         'skip_editions': [{'2017': '10'}]}
+        self.json_test_key_list = ['log_level', 'new_key']
+        with self.assertRaises(SystemExit) as cm:
+            json_config_check(self.json_test_dict, self.json_test_key_list)
+        self.assertEqual(cm.exception.code, 99)
 
 
 if __name__ == '__main__':

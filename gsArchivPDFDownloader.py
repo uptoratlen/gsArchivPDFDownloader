@@ -22,6 +22,28 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException
 
 
+def json_config_check(_json_config, _key_list):
+    """Checks if read json file contais all requeired keys
+    exists when check is ngeativ (key is missing)
+
+    Parameters
+    ----------
+    _json_config: dict
+        The json dict
+    _key_list: list
+        A list of given key names for chekcing
+
+    :return: True if all is ok
+    :rtype: bool
+
+    """
+    logging.info(f'Checking Config:{_json_config}')
+    for key_check in _key_list:
+        if not key_check in _json_config.keys():
+            logging.error(f"Json file looks incomplete - key:'{key_check}' is missing")
+            exit(99)
+    return True
+
 def filename_modification(filestring_downloaded, filestring_target, edition_month, edition_jahr, edition2d="no"):
     """Filenames must be altered according to the server/download and local/target definition in json file
 
@@ -234,6 +256,7 @@ def move_downloaded(_targetfolder, _year, _fn_downloaded, _fn_target, _timeout=3
 if __name__ == '__main__':
 
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    key_list_gsjson = ['edition2d', 'log_level', 'downloadtarget', 'new']
 
     # read config from json file
     json_config_file = 'gs.json'
@@ -253,7 +276,6 @@ if __name__ == '__main__':
 
     # Loggin set up
     LOG_FILE = os.path.dirname(os.path.abspath(__file__)) + '/gsArchivPDFDownloader.log'
-
     logger = logging.getLogger('')
     logger.setLevel(logging.DEBUG)
     fh = logging.handlers.RotatingFileHandler(LOG_FILE, maxBytes=100000, backupCount=10)
@@ -300,6 +322,8 @@ if __name__ == '__main__':
     logging.info(f"filenamepattern_fromserver:{user_data[0]['filenamepattern_fromserver']}")
     logging.info(f"filenamepattern_intarget  :{user_data[0]['filenamepattern_intarget']}")
 
+    #Precheck
+    json_config_check(user_data[0], key_list_gsjson)
     for x in [user_credential[0]['user'], user_credential[0]['password']]:
         if 'edit_your_' in x:
             logging.error(f"Sorry, you forget to edit the gs_credential.json - "
