@@ -1,7 +1,8 @@
-__version_info__ = ('0', '5', '6')
+__version_info__ = ('0', '6', '0')
 __version__ = '.'.join(__version_info__)
 
 import argparse
+import re
 from datetime import datetime
 import json
 import os
@@ -70,23 +71,23 @@ def filename_modification(filestring_downloaded, filestring_target, edition_mont
         exit(99)
 
 
-def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
-                     filestring_download, filestring_target):
+def download_edition(_jahr_start, _ausgaben_start, _jahr_end, _ausgaben_end,
+                     _filestring_download, _filestring_target):
     """The main download function
 
     Parameters
     ----------
-    jahr_start : int
+    _jahr_start : int
         Start year of requested downloads
-    ausgaben_start : int
+    _ausgaben_start : int
         Start month/edition of requested downloads
-    jahr_end : int
+    _jahr_end : int
         End year of requested downloads
-    ausgaben_end : int
+    _ausgaben_end : int
         End month/edition of requested downloads
-    filestring_download : str
+    _filestring_download : str
         The filename string from json file for the download name
-    filestring_target : str
+    _filestring_target : str
         The filename string from json file for the target/local name
 
     Returns
@@ -97,15 +98,20 @@ def download_edition(jahr_start, ausgaben_start, jahr_end, ausgaben_end,
     """
     wait_de = WebDriverWait(driver, 10)
     dl_success = True
-    for jahrdl in range(jahr_start, jahr_end+1):
-        for ausgabedl in range(ausgaben_start, ausgaben_end+1):
+
+    for jahrdl in range(_jahr_start, _jahr_end+1):
+        for ausgabedl in range(_ausgaben_start, _ausgaben_end+1):
             _filenamepattern_download, _filenamepattern_local = filename_modification(
-                filestring_download, filestring_target, str(ausgabedl), str(jahrdl), user_data[0]['edition2d'])
+                _filestring_download, _filestring_target, str(ausgabedl), str(jahrdl), user_data[0]['edition2d'])
             if jahrdl == 2017 and ausgabedl == 10:
                 logging.info(f"Warning - this is the current (by 11 March 2021) faulty download link of "
                              f"'{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}'")
                 logging.info(f"as by user request the download will be done;"
                              f"if it fails please remove edition from gs.json auf year 2017")
+            if jahrdl == 1997 and ausgabedl <= 8:
+                logging.info(f"Skip download - First edition of 1997 is 9 "
+                             f"'requested ({ausgabedl}/{jahrdl}'")
+                continue
             if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}"):
                 logging.info(f"Skip download - already existing "
                              f"'{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}'")
@@ -273,12 +279,19 @@ if __name__ == '__main__':
     logger.addHandler(fh)
     logger.addHandler(sh)
 
-    parser = argparse.ArgumentParser(description='Download a certain year with all editions')
+    parser = argparse.ArgumentParser(description='Download GameStar PDFs from webpage')
     parser.add_argument('-l', '--latest',  action='store_const',
-                        const=True, help='try to download always the newest (starting from 2021-03)')
+                        const=True, help=f"try to download always the newest (starting from "
+                                         f"{user_data[0]['latestdownload'][0]['year']}-"
+                                         f"{user_data[0]['latestdownload'][0]['edition']})")
     parser.add_argument('-y', '--year', type=int, help='a single year in range [1997-2035]')
+    parser.add_argument('-r', '--range', type=str, help='a range in fomrat yyyy:mm-yyyy:mm; example -r 2019:09-2020:11')
     parser.add_argument('-V', '--version', action='version', version="%(prog)s ("+__version__+")")
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
     args = parser.parse_args()
+
     if args.year and (args.year < 1997 or args.year > 2035):
         parser.error("Select a year within range 1997 to 2035")
 
@@ -422,18 +435,74 @@ if __name__ == '__main__':
         logging.info(f'Update JSON file ({json_config_file})')
         with open(json_config_file, 'w') as outfile:
             json.dump(user_data, outfile, indent=4, sort_keys=False)
+    elif args.range:
+        logging.error('Run Type: Range')
+        range_selection = args.range
+        matched = re.match("[1-2][0-9]{3}:[0-1][0-9]-[1-2][0-9]{3}:[0-1][0-9]", range_selection)
+        if not bool(matched):
+            logging.error('The range argument is not in the right format.')
+            driver.quit()
+            sys.exit(95)
+        abortflag = 0
+        range_selection_split = range_selection.split("-")
+        range_start_year = range_selection_split[0].split(":")[0]
+        range_start_month = range_selection_split[0].split(":")[1]
+        range_end_year = range_selection_split[1].split(":")[0]
+        range_end_month = range_selection_split[1].split(":")[1]
+        logging.debug(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
+        if int(str(range_start_year) + str(range_start_month).zfill(2)) <= 199708:
+            logging.error('Range start is to early.')
+            driver.quit()
+            sys.exit(95)
+        if int(str(range_start_year) + str(range_start_month).zfill(2)) > \
+                int(str(range_end_year) + str(range_end_month).zfill(2)):
+            logging.error('Range end is older than start.')
+            driver.quit()
+            sys.exit(95)
 
+        jahr = range_start_year
+        ausgabe = range_start_month
+        continue_download = True
+        success = True
+        while continue_download:
+            logging.info(f"Trying now to download  (Edition/Year) => ({ausgabe}/{jahr})")
+            filenamepattern_download, filenamepattern_local = filename_modification(
+                user_data[0]['filenamepattern_fromserver'], user_data[0]['filenamepattern_intarget'],
+                ausgabe, jahr, user_data[0]['edition2d'])
+            logging.debug(f'Filepattern(from server)     :[{filenamepattern_download}]')
+            logging.debug(f'Filepattern(local for target):[{filenamepattern_local}]')
+            if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}"):
+                logging.info(f"Skip download - already existing "
+                             f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
+                success = True
+            else:
+                logging.info(f"Process Download for "
+                             f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
+                success = download_edition(int(jahr), int(ausgabe), int(jahr), int(ausgabe),
+                                           user_data[0]['filenamepattern_fromserver'],
+                                           user_data[0]['filenamepattern_intarget'])
+            logging.debug(f"success [{success}]")
+
+            ausgabe = str(int(ausgabe) + 1)
+            if int(jahr) == 2013 and int(ausgabe) == 13:
+                logging.info('Special year 2013 with 13th edition in range')
+            elif (int(jahr) != 2013 and int(ausgabe) == 13) or (int(jahr) == 2013 and int(ausgabe) == 14):
+                logging.info('Roll over in loop to next year')
+                ausgabe = str(1)
+                jahr = str(int(jahr) + 1)
+
+            if int(str(range_end_year) + str(range_end_month).zfill(2)) >= int(str(jahr) + str(ausgabe).zfill(2)):
+                logging.debug('Loop fine - expecting still a next edition.')
+                continue
+            else:
+                logging.debug('Stop latest download loop - max reached.')
+                continue_download = False
     else:
-        logging.info('Run Type: Editions')
-        for editions in user_data[0]['editions']:
-            for year in editions:
-                logging.info(f"(Year,Editions)=>({year}, {editions[year]})")
-                for edition in editions[year].split(','):
-                    download_edition(int(year), int(edition), int(year), int(edition),
-                                     user_data[0]['filenamepattern_fromserver'],
-                                     user_data[0]['filenamepattern_intarget'])
+        logging.error('Run Type: not supported')
+        driver.quit()
+        sys.exit(95)
 
     logging.info(f"Last requested edition downloaded - give job some time (30s) to finish, for no good reason...")
-    sleep(30)
+    sleep(3)
     driver.quit()
     logging.info('Job done')
