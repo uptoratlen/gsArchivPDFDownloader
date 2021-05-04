@@ -22,52 +22,86 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException
 
 
+def _open_gs_and_login(_url, _user, _password, _options, _profile):
+    """Returns a webdriver :class:'selenium.webdriver.firefox.webdriver.WebDriver' object
+    Will open a browser with options and profile given,
+    login to page with user and password
+
+    Args:
+        _url (str): URL of startpage to login
+        _user (str): Username from credentials
+        _password (str): Password from credentials
+        _options (class): Firefox options
+        _profile (class): Firefox profile
+
+    Returns:
+        class: webdriver
+
+    """
+    # open browser and login
+    _driver = webdriver.Firefox(options=_options, firefox_profile=_profile)
+    _wait = WebDriverWait(_driver, 20)
+    _driver.get(_url)
+    logging.info(f"Browser now started with URL:{_url} - "
+                 f"try now to log in with user/password [xxx/***]")
+    _wait.until(ec.visibility_of_element_located((By.LINK_TEXT, 'einloggen')))
+    _driver.find_element_by_link_text('einloggen').click()
+    _wait.until(ec.visibility_of_element_located((By.ID, 'loginbox-login-username')))
+    _driver.find_element_by_id('loginbox-login-username').send_keys(_user)
+    _driver.find_element_by_id('loginbox-login-password').send_keys(_password)
+    _driver.find_element_by_css_selector('button.btn:nth-child(9)').click()
+    return _driver
+
+
+def _hlp_display_type(varx):
+    """
+
+    Args:
+        varx:
+
+    Returns:
+
+    """
+    print(type(varx))
+    return True
+
+
 def json_config_check(_json_config, _key_list):
     """Checks if read json file contais all requeired keys
     exists when check is ngeativ (key is missing)
 
-    Parameters
-    ----------
-    _json_config: dict
-        The json dict
-    _key_list: list
-        A list of given key names for chekcing
+    Args:
+        _json_config (dict): the json dict to check
+        _key_list (list): A list of given key names for checking
 
-    :return: True if all is ok
-    :rtype: bool
-
+    Returns:
+        bool: True if all is ok
     """
-    logging.info(f'Checking Config:{_json_config}')
+    logging.info(f'Checking json config')
+    logging.debug(f'{_json_config}')
     for key_check in _key_list:
-        if not key_check in _json_config.keys():
+        if key_check not in _json_config.keys():
             logging.error(f"Json file looks incomplete - key:'{key_check}' is missing")
             exit(99)
     return True
 
+
 def filename_modification(filestring_downloaded, filestring_target, edition_month, edition_jahr, edition2d="no"):
     """Filenames must be altered according to the server/download and local/target definition in json file
 
-    Parameters
-    ----------
-    filestring_download_in : str
-        The filename string from json file for the download name
-    filestring_local_in : str
-        The filename string from json file for the target/local name
-    edition_month : str
-        The edition number aka month as string
-    edition_jahr : str
-        The edition year aka jahr as string
+    Args:
+        filestring_downloaded (str): The filename string from json file for the download name
+        filestring_target (str): The filename string from json file for the target/local name
+        edition_month (str):  The edition number aka month as string
+        edition_jahr (str): The edition year aka jahr as string
+        edition2d (str, optional): yes will pad always 0 to the 1-9 editions
 
-    Returns
-    -------
-    filenamepattern_4download: str
-        the final name of the file used in the download url
-    filenamepattern_4target: str
-        the final name of the file used in the target folder
-
-
-    :raises TypeError: in case input is not str and exists
-
+    Returns:
+        (tuple): tuple containing:
+             filestring_downloaded (str): the final name of the file used in the download url
+             filestring_target (str): the final name of the file used in the target folder
+    Raises:
+        TypeError: in case input is not str and exists
     """
     logging.debug(f'Filename after Download on disk :[{filestring_downloaded}]')
     logging.debug(f'Filename for Target(modified)   :[{filestring_target}]')
@@ -93,103 +127,119 @@ def filename_modification(filestring_downloaded, filestring_target, edition_mont
         exit(99)
 
 
-def download_edition(_jahr_start, _ausgaben_start, _jahr_end, _ausgaben_end,
-                     _filestring_download, _filestring_target):
+def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_target, _skip_editions):
     """The main download function
 
-    Parameters
-    ----------
-    _jahr_start : int
-        Start year of requested downloads
-    _ausgaben_start : int
-        Start month/edition of requested downloads
-    _jahr_end : int
-        End year of requested downloads
-    _ausgaben_end : int
-        End month/edition of requested downloads
-    _filestring_download : str
-        The filename string from json file for the download name
-    _filestring_target : str
-        The filename string from json file for the target/local name
+    Args:
+        jahrdl (int): year of requested downloads
+        ausgabedl (int): month/edition of requested downloads
+        _filestring_download (str): The filename string from json file for the download name
+        _filestring_target (str): The filename string from json file for the target/local name
+        _skip_editions (dict): dict of all special editions that should be skipped as they are expected to cause a issue (server side error)
 
-    Returns
-    -------
-    bool
-        False in case of a not existing edition
+    Returns:
+        dl_state (int): flag for return value
+        0 = ok
+        1 = skipped
+        2 = existing
+        3 = before 1997/08
+        10 = failed to download
+        11 = failed to move
+        12 = page load failed
 
     """
     wait_de = WebDriverWait(driver, 10)
-    dl_success = True
 
-    for jahrdl in range(_jahr_start, _jahr_end+1):
-        for ausgabedl in range(_ausgaben_start, _ausgaben_end+1):
-            _filenamepattern_download, _filenamepattern_local = filename_modification(
-                _filestring_download, _filestring_target, str(ausgabedl), str(jahrdl), user_data[0]['edition2d'])
-            if jahrdl == 2017 and ausgabedl == 10:
-                logging.info(f"Warning - this is the current (by 11 March 2021) faulty download link of "
-                             f"'{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}'")
-                logging.info(f"as by user request the download will be done;"
-                             f"if it fails please remove edition from gs.json auf year 2017")
-            if jahrdl == 1997 and ausgabedl <= 8:
-                logging.info(f"Skip download - First edition of 1997 is 9 "
-                             f"'requested ({ausgabedl}/{jahrdl}'")
-                continue
-            if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}"):
-                logging.info(f"Skip download - already existing "
-                             f"'{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}'")
-                continue
-            try:
-                if os.path.exists(f"{user_data[0]['downloadtarget']}/{_filenamepattern_download}"):
-                    os.remove(f"{user_data[0]['downloadtarget']}/{_filenamepattern_download}")
-                sleep(5)
-                logging.info(f'Try now download of : Jahr {jahrdl} and Ausgabe {ausgabedl} '
-                             f'- URL:https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahrdl}&bkm={ausgabedl}')
-                driver.get(f'https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahrdl}&bkm={ausgabedl}')
-                sleep(8)
-                try:
-                    save_button = wait_de.until(ec.visibility_of_element_located((By.XPATH,
-                                                                                  '//*[@id="top_menu_save"]')))
-                except TimeoutException:
-                    logging.warning('Looks like the page not found is displayed - this edition failed')
-                    dl_success = False
-                    continue
-                ActionChains(driver).move_to_element(save_button).click().perform()
-                wait_de.until(ec.visibility_of_element_located((By.XPATH, '//p[@class="title"]')))
+    _filenamepattern_download, _filenamepattern_local = filename_modification(
+        _filestring_download, _filestring_target, str(ausgabedl), str(jahrdl), user_data[0]['edition2d'])
+    skip_download = False
 
-                wait_de.until(ec.visibility_of_element_located((By.XPATH, "//a[contains(@href, 'complete.pdf')]")))
-                driver.find_element_by_xpath("//a[contains(@href, 'complete.pdf')]").click()
-                sleep(1)
-                resultdl1 = wait_for_download(f"{user_data[0]['downloadtarget']}/{_filenamepattern_download}",
-                                              timeout=user_data[0]['downloadtimeout'])
-                if resultdl1 is True:
-                    move_downloaded(f"{user_data[0]['downloadtarget']}", jahrdl,
-                                    _filenamepattern_download, _filenamepattern_local)
+    try:
+        for _editions in _skip_editions:
+            for _year in _editions:
+                if not str(jahrdl) in _year:
+                    raise StopIteration
                 else:
-                    logging.warning('Download not yet completed - not possible to move by now')
-            except TimeoutException as t:
-                logging.exception(f'Browser page load failed;maybe edition does not exist;or very slow load '
-                                  f'- timeout exception:{t}')
-            except Exception as e:
-                logging.exception(f'Exception:{e}')
-                driver.quit()
-    return dl_success
+                    if str(ausgabedl) in _editions[_year]:
+                        logging.warning(f"The requested edition [{ausgabedl}/{jahrdl}] is a marked-for-skip edition")
+                        logging.warning(f"No download will be initiated. "
+                                        f"Edit gs.json to add or remove editions from skip list.")
+                        skip_download = True
+    except StopIteration:
+        # continue as not in skip list
+        pass
+
+    if skip_download:
+        return 1
+
+    if jahrdl == 1997 and ausgabedl <= 8:
+        logging.info(f"Skip download - First edition of 1997 is 9 "
+                     f"'requested ({ausgabedl}/{jahrdl}'")
+        return 3
+    if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}"):
+        logging.info(f"Skip download - already existing "
+                     f"'{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}'")
+        return 2
+    try:
+        logging.info(f'Try now download of : Jahr {jahrdl} and Ausgabe {ausgabedl} '
+                     f'- URL:https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahrdl}&bkm={ausgabedl}')
+        # open url of blätterkatalog
+        driver.get(f'https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahrdl}&bkm={ausgabedl}')
+        sleep(8)
+
+        # also remove pending part files
+        if os.path.exists(f"{user_data[0]['downloadtarget']}/{_filenamepattern_download}*"):
+            os.remove(f"{user_data[0]['downloadtarget']}/{_filenamepattern_download}*")
+        sleep(5)
+
+        try:
+            # wait for the save button on the right side
+            save_button = wait_de.until(ec.visibility_of_element_located((By.XPATH,
+                                                                          '//*[@id="top_menu_save"]')))
+        except TimeoutException:
+            logging.warning('Looks like the page not found is displayed - this edition failed')
+            return 10
+        # navigate to the button; click only did not work as expected
+        ActionChains(driver).move_to_element(save_button).click().perform()
+        # wait for titel to apear; used as a confirm that the editon is fully loaded
+        wait_de.until(ec.visibility_of_element_located((By.XPATH, '//p[@class="title"]')))
+        # wait for the complete.pdf; check if the user is a valid user  and not guest
+        wait_de.until(ec.visibility_of_element_located((By.XPATH, "//a[contains(@href, 'complete.pdf')]")))
+        # click on the download / save button
+        driver.find_element_by_xpath("//a[contains(@href, 'complete.pdf')]").click()
+        sleep(1)
+        resultdl1 = wait_for_download(f"{user_data[0]['downloadtarget']}/{_filenamepattern_download}",
+                                      timeout=user_data[0]['downloadtimeout'])
+        if resultdl1 is True:
+            dl_state = 0
+            move_downloaded(f"{user_data[0]['downloadtarget']}", jahrdl,
+                            _filenamepattern_download, _filenamepattern_local)
+        else:
+            dl_state = 11
+            logging.warning(f'Download failed before move.')
+
+    except TimeoutException as t:
+        dl_state = 12
+        logging.exception(f'Browser page load failed;maybe edition does not exist;or very slow load '
+                          f'- timeout exception:{t}')
+
+    except Exception as e:
+        logging.exception(f'Exception:{e}')
+        driver.quit()
+        sys.exit(99)
+
+    return dl_state
 
 
 def wait_for_download(filedownloadfullpath, timeout=30):
     """Will check if a partial download still exists
 
-    Parameters
-    ----------
-    filedownloadfullpath: str
-        the full download name of the target/downloaded file, absolutepath
-    timeout: int, optional
-        Timeout given for wait until no partial files are seen anymore
+    Args:
+        filedownloadfullpath (str): the full download name of the target/downloaded file, absolute path
+        timeout (int, optional): Timeout given for wait until no partial files are seen anymore
 
-    Returns
-    -------
-    bool
-        False : Partial donwloaded file still seen after timeout
-        True  : Download is complete, no partial files seen
+    Returns:
+        The return value. True for Download is complete, no partial files seen, False for Partial donwloaded file still seen after timeout.
 
     """
     logging.debug(f'Download timeout is:[{timeout}]')
@@ -213,24 +263,15 @@ def wait_for_download(filedownloadfullpath, timeout=30):
 def move_downloaded(_targetfolder, _year, _fn_downloaded, _fn_target, _timeout=30):
     """Will check if a partial download still exists
 
-    Parameters
-    ----------
-    _targetfolder: str
-        absolute path of target folder no trailing path separator
-    _year: int
-        year; will be used as a subfolder
-    _fn_downloaded: str
-        the name of the downloaded file
-    _fn_target: str
-        the name of the file in the target folder
-    _timeout: int
-        a grace time for seeing the file on the disk
+    Args:
+    _targetfolder (str): absolute path of target folder no trailing path separator
+    _year (int): year; will be used as a subfolder
+    _fn_downloaded (str): the name of the downloaded file
+    _fn_target (str): the name of the file in the target folder
+    _timeout (int): a grace time for seeing the file on the disk
 
-    Returns
-    -------
-    bool
-        False : a error occurred while moving file
-        True  : No error detected
+    Returns:
+        bool: True if no error detected, False if a error occurred while moving file
 
     """
 
@@ -256,7 +297,9 @@ def move_downloaded(_targetfolder, _year, _fn_downloaded, _fn_target, _timeout=3
 if __name__ == '__main__':
 
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    key_list_gsjson = ['edition2d', 'log_level', 'downloadtarget', 'new']
+    key_list_gsjson = ['log_level', 'downloadtarget', 'edition2d', 'downloadtimeout', 'abortlimit',
+                       'filenamepattern_intarget', 'filenamepattern_fromserver', 'latestdownload',
+                       'browser_display_on_latest', 'skip_editions']
 
     # read config from json file
     json_config_file = 'gs.json'
@@ -316,13 +359,14 @@ if __name__ == '__main__':
 
     if args.year and (args.year < 1997 or args.year > 2035):
         parser.error("Select a year within range 1997 to 2035")
+    if args.range:
+        matched = re.match("^[1-2][0-9]{3}:[0-1][0-9]-[1-2][0-9]{3}:[0-1][0-9]$", args.range)
+        if not bool(matched):
+            logging.error('The range argument is not in the right format.')
+            sys.exit(95)
 
     logging.info(f"gsArchivPDFDownloader Version:{__version__}")
-    logging.info(f"Download location:{user_data[0]['downloadtarget']}")
-    logging.info(f"filenamepattern_fromserver:{user_data[0]['filenamepattern_fromserver']}")
-    logging.info(f"filenamepattern_intarget  :{user_data[0]['filenamepattern_intarget']}")
-
-    #Precheck
+    # Precheck
     json_config_check(user_data[0], key_list_gsjson)
     for x in [user_credential[0]['user'], user_credential[0]['password']]:
         if 'edit_your_' in x:
@@ -335,46 +379,37 @@ if __name__ == '__main__':
         logging.info(f"Create folder [{user_data[0]['downloadtarget']}]")
         os.makedirs(f"{user_data[0]['downloadtarget']}")
 
-    profile: FirefoxProfile = webdriver.FirefoxProfile()
-    profile.set_preference('browser.download.folderList', 2)
-    profile.set_preference('browser.helperApps.alwaysAsk.force', False)
-    profile.set_preference('browser.download.manager.showWhenStarting', False)
-    profile.set_preference('browser.download.dir', f"{user_data[0]['downloadtarget']}")
+    profileFF: FirefoxProfile = webdriver.FirefoxProfile()
+    profileFF.set_preference('browser.download.folderList', 2)
+    profileFF.set_preference('browser.helperApps.alwaysAsk.force', False)
+    profileFF.set_preference('browser.download.manager.showWhenStarting', False)
+    profileFF.set_preference('browser.download.dir', f"{user_data[0]['downloadtarget']}")
 
-    profile.set_preference('plugin.disable_full_page_plugin_for_types', 'application/pdf')
-    profile.set_preference('pdfjs.disabled', True)
-    profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/pdf')
+    profileFF.set_preference('plugin.disable_full_page_plugin_for_types', 'application/pdf')
+    profileFF.set_preference('pdfjs.disabled', True)
+    profileFF.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/pdf')
 
-    options = Options_FF()
-    options.headless = False
+    optionsFF = Options_FF()
+    optionsFF.headless = False
     if args.latest and user_data[0]['browser_display_on_latest'].lower() == "no":
-        options.headless = True
-    driver = webdriver.Firefox(options=options, firefox_profile=profile)
+        optionsFF.headless = True
+
+    logging.info(f"Download location:{user_data[0]['downloadtarget']}")
+    logging.info(f"filenamepattern_fromserver:{user_data[0]['filenamepattern_fromserver']}")
+    logging.info(f"filenamepattern_intarget  :{user_data[0]['filenamepattern_intarget']}")
 
     url = 'https://www.gamestar.de/plus/'
-    wait = WebDriverWait(driver, 20)
-
-    # open browser and login
-    driver.get(url)
-    logging.info(f"Browser now started with URL:{url} - "
-                 f"try now to log in with user/password [xxxxxxxxxxxxxxxxxxx/************************]")
-
-    wait.until(ec.visibility_of_element_located((By.LINK_TEXT, 'einloggen')))
-    driver.find_element_by_link_text('einloggen').click()
-    wait.until(ec.visibility_of_element_located((By.ID, 'loginbox-login-username')))
-    driver.find_element_by_id('loginbox-login-username').send_keys(user_credential[0]['user'])
-    driver.find_element_by_id('loginbox-login-password').send_keys(user_credential[0]['password'])
-    driver.find_element_by_css_selector('button.btn:nth-child(9)').click()
 
     if args.year:
         logging.info('Run Type: Year')
+        driver = _open_gs_and_login(url, user_credential[0]['user'], user_credential[0]['password'],
+                                    optionsFF, profileFF)
         year = args.year
         abortflag = 0
         for edition in range(1, 14):
-            result = download_edition(int(year), edition, int(year),
-                                      edition, user_data[0]['filenamepattern_fromserver'],
-                                      user_data[0]['filenamepattern_intarget'])
-            if result is True:
+            result = download_edition(int(year), edition, user_data[0]['filenamepattern_fromserver'],
+                                      user_data[0]['filenamepattern_intarget'], user_data[0]['skip_editions'])
+            if result < 10:
                 abortflag = 0
             else:
                 abortflag += 1
@@ -410,28 +445,18 @@ if __name__ == '__main__':
 
         ausgabe = str(int(ausgabe)+1)
         continue_download = True
-        success = True
+        driver = _open_gs_and_login(url, user_credential[0]['user'], user_credential[0]['password'],
+                                    optionsFF, profileFF)
         while continue_download:
             logging.info(f"Trying now to download the latest version for (Editions/Year) (curMonth/curYear)=>"
                          f"({ausgabe}/{jahr}) ({current_month}/{current_year})")
             logging.debug(f"maxMonth, maxYear=>({max_month_latest}, {max_year_latest})")
-            filenamepattern_download, filenamepattern_local = filename_modification(
-                user_data[0]['filenamepattern_fromserver'], user_data[0]['filenamepattern_intarget'],
-                ausgabe, jahr, user_data[0]['edition2d'])
-            logging.debug(f'Filepattern(from server)     :[{filenamepattern_download}]')
-            logging.debug(f'Filepattern(local for target):[{filenamepattern_local}]')
-            if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}"):
-                logging.info(f"Skip download - already existing "
-                             f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
-                success = True
-            else:
-                logging.info(f"Process Download for "
-                             f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
-                success = download_edition(int(jahr), int(ausgabe), int(jahr), int(ausgabe),
-                                           user_data[0]['filenamepattern_fromserver'],
-                                           user_data[0]['filenamepattern_intarget'])
-            logging.debug(f"success [{success}]")
-            if success:
+
+            result = download_edition(int(jahr), int(ausgabe),
+                                      user_data[0]['filenamepattern_fromserver'],
+                                      user_data[0]['filenamepattern_intarget'], user_data[0]['skip_editions'])
+            logging.debug(f"result [{result}]")
+            if result < 10:
                 logging.debug(f"Last success download [{ausgabe_lastdl}/{jahr_lastdl}]")
                 jahr_lastdl = jahr
                 ausgabe_lastdl = ausgabe
@@ -460,13 +485,8 @@ if __name__ == '__main__':
         with open(json_config_file, 'w') as outfile:
             json.dump(user_data, outfile, indent=4, sort_keys=False)
     elif args.range:
-        logging.error('Run Type: Range')
+        logging.info('Run Type: Range')
         range_selection = args.range
-        matched = re.match("[1-2][0-9]{3}:[0-1][0-9]-[1-2][0-9]{3}:[0-1][0-9]", range_selection)
-        if not bool(matched):
-            logging.error('The range argument is not in the right format.')
-            driver.quit()
-            sys.exit(95)
         abortflag = 0
         range_selection_split = range_selection.split("-")
         range_start_year = range_selection_split[0].split(":")[0]
@@ -476,36 +496,26 @@ if __name__ == '__main__':
         logging.debug(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
         if int(str(range_start_year) + str(range_start_month).zfill(2)) <= 199708:
             logging.error('Range start is to early.')
-            driver.quit()
             sys.exit(95)
         if int(str(range_start_year) + str(range_start_month).zfill(2)) > \
                 int(str(range_end_year) + str(range_end_month).zfill(2)):
             logging.error('Range end is older than start.')
-            driver.quit()
             sys.exit(95)
 
+        driver = _open_gs_and_login(url, user_credential[0]['user'], user_credential[0]['password'],
+                                    optionsFF, profileFF)
         jahr = range_start_year
         ausgabe = range_start_month
         continue_download = True
-        success = True
+        error_list = []
         while continue_download:
             logging.info(f"Trying now to download  (Edition/Year) => ({ausgabe}/{jahr})")
-            filenamepattern_download, filenamepattern_local = filename_modification(
-                user_data[0]['filenamepattern_fromserver'], user_data[0]['filenamepattern_intarget'],
-                ausgabe, jahr, user_data[0]['edition2d'])
-            logging.debug(f'Filepattern(from server)     :[{filenamepattern_download}]')
-            logging.debug(f'Filepattern(local for target):[{filenamepattern_local}]')
-            if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}"):
-                logging.info(f"Skip download - already existing "
-                             f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
-                success = True
-            else:
-                logging.info(f"Process Download for "
-                             f"'{user_data[0]['downloadtarget']}/{jahr}/{filenamepattern_local}'")
-                success = download_edition(int(jahr), int(ausgabe), int(jahr), int(ausgabe),
-                                           user_data[0]['filenamepattern_fromserver'],
-                                           user_data[0]['filenamepattern_intarget'])
-            logging.debug(f"success [{success}]")
+            success = download_edition(int(jahr), int(ausgabe),
+                                       user_data[0]['filenamepattern_fromserver'],
+                                       user_data[0]['filenamepattern_intarget'], user_data[0]['skip_editions'])
+            if success >= 10:
+                logging.warning(f'Download failed(load) - adding [{ausgabe}/{jahr}] to report.')
+                error_list.append(f'{jahr}/{ausgabe}')
 
             ausgabe = str(int(ausgabe) + 1)
             if int(jahr) == 2013 and int(ausgabe) == 13:
@@ -520,13 +530,16 @@ if __name__ == '__main__':
                 continue
             else:
                 logging.debug('Stop latest download loop - max reached.')
+                if len(error_list) > 0:
+                    logging.warning(f'Some edition showed some recoverable issues while downloading -'
+                                    f' try same run a second time.')
+                    logging.warning(f'{error_list}')
                 continue_download = False
     else:
         logging.error('Run Type: not supported')
-        driver.quit()
         sys.exit(95)
 
-    logging.info(f"Last requested edition downloaded - give job some time (30s) to finish, for no good reason...")
-    sleep(3)
+    logging.info(f"Last requested edition downloaded - give job some time (10s) to finish, for no good reason...")
+    sleep(10)
     driver.quit()
     logging.info('Job done')
