@@ -17,6 +17,7 @@
 - [Run](#run)
   - [commandline argument](#commandline-argument)
     - [--full](#--full)
+    - [--range](#--range)
     - [--year](#--year)
     - [--latest](#--latest)
 - [Remarks](#remarks)
@@ -100,7 +101,7 @@ This is a not working sample ! - Get the real one from code or release page.
   }
 ]
 ```
-| Name          | value allowed        | Remark|introduced/removed
+| Name          | value allowed        | Remark|introduced|
 |:---|:---:|:---|:---:|
 | user      | string | your gs user name | v0.5.6|
 | password      | string   | your gs user password | v0.5.6|
@@ -134,7 +135,7 @@ This is a not working sample ! - Get the real one from code or release page.
     }
 ]
 ```
-| Name          | value allowed        | Remark|introduced
+| Name          | value allowed        | Remark|introduced|
 |:---|:---:|:---|:---:|
 | log_level      | [debug/info/warning/error/critical]   | The log level just in case needed - info is default, debug is fallback | v0.5|
 | downloadtarget | string   | please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive" will look like "c:\\\\download\\\\Gamestar-archive". | v0.1|
@@ -218,6 +219,18 @@ C:
                               +...         
 ```
 
+#### --range
+```
+python gsArchivPDFDownloader.py --range YYYY:mm-YYYY:mm
+
+Example: python gsArchivPDFDownloader.py --range 2012:02-2013:10
+```
+the argument ```YYYY:mm-YYYY:mm``` is in format   
+```4 digits start year>:<2 digits start month>-<4 digits end year>:<2 digits end month>```
+
+The start year/month needs to be older than the end year/month.   
+Script will check for correct format and valid range.
+Anything from 1997/08 to 2039/12 will be accepted as valid.
 
 #### --year
 eg. a commandline  ``` python gsArchivPDFDownloader.py -y 2020 ``` or  ``` python gsArchivPDFDownloader.py --year 2020``` 
@@ -263,6 +276,9 @@ Not sure how many this script used, but as long as I will use it I will update t
 
 * It will only download a fraction of the edition like a sample.  
   You may not enter in gs.json the right credentials
+
+* After a Job, somtimes file remain in the top download folder?
+  This should not happen. Will be adressed in of of the next versions
 
 * Hell, why you use simple sleeps?  
   ...one time effort...lazy?...eh...I guess you are right, but it worked for me.....sorry. And I tried some limited conditional waits...

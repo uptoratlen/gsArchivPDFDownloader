@@ -3,6 +3,7 @@ __version__ = '.'.join(__version_info__)
 
 import argparse
 import re
+import shutil
 from datetime import datetime
 import json
 import os
@@ -82,7 +83,7 @@ def json_config_check(_json_config, _key_list):
     for key_check in _key_list:
         if key_check not in _json_config.keys():
             logging.error(f"Json file looks incomplete - key:'{key_check}' is missing")
-            exit(99)
+            sys.exit(99)
     return True
 
 
@@ -121,10 +122,10 @@ def filename_modification(filestring_downloaded, filestring_target, edition_mont
         return filestring_downloaded, filestring_target
     except TypeError as e:
         logging.exception(f'TypeError Exception Raised - str expected int found -{e}')
-        exit(99)
+        sys.exit(99)
     except (ValueError, AttributeError) as e:
         logging.exception(f'ValueError/AttributeError Exception Raised - {e}')
-        exit(99)
+        sys.exit(99)
 
 
 def download_range(_range_start_year, _range_start_month, _range_end_year, _range_end_month):
@@ -217,7 +218,8 @@ def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_target
                 if not str(jahrdl) in _year:
                     raise StopIteration
                 else:
-                    if str(ausgabedl) in _editions[_year]:
+
+                    if str(ausgabedl) in _editions[_year].split(','):
                         logging.warning(f"The requested edition [{ausgabedl}/{jahrdl}] is a marked-for-skip edition")
                         logging.warning(f"No download will be initiated. "
                                         f"Edit gs.json to add or remove editions from skip list.")
@@ -343,7 +345,7 @@ def move_downloaded(_targetfolder, _year, _fn_downloaded, _fn_target, _timeout=3
         logging.info(f'Downloaded file [{_targetfolder}/{_fn_downloaded}] still not seen- waiting')
         sleep(1.5)
     if os.path.exists(f'{_targetfolder}/{_fn_downloaded}'):
-        os.rename(f'{_targetfolder}/{_fn_downloaded}',
+        shutil.move(f'{_targetfolder}/{_fn_downloaded}',
                   f'{_targetfolder}/{_year}/{_fn_target}')
         logging.info('Move Download done successful')
         return True
@@ -363,7 +365,7 @@ if __name__ == '__main__':
     json_config_file = 'gs.json'
     if not os.path.exists(json_config_file):
         logging.error(f'Sorry, but config file [{json_config_file}] was not found in dir.')
-        exit(96)
+        sys.exit(96)
     with open(json_config_file, 'r') as file:
         user_data = json.loads(file.read())
 
@@ -371,7 +373,7 @@ if __name__ == '__main__':
     json_credential_file = 'gs_credential.json'
     if not os.path.exists(json_credential_file):
         logging.error(f'Sorry, but credential file [{json_credential_file}] was not found in dir.')
-        exit(96)
+        sys.exit(96)
     with open(json_credential_file, 'r') as file:
         user_credential = json.loads(file.read())
 
@@ -422,7 +424,7 @@ if __name__ == '__main__':
     if args.year and (args.year < 1997 or args.year > 2035):
         parser.error("Select a year within range 1997 to 2035")
     if args.range:
-        matched = re.match("^[1-2][0-9]{3}:[0-1][0-9]-[1-2][0-9]{3}:[0-1][0-9]$", args.range)
+        matched = re.match("^(199[7-9]|20[0-3]\d):(0[0-9]|1[0123])-(199[7-9]|20[0-3]\d):(0[0-9]|1[0123])$", args.range)
         if not bool(matched):
             logging.error('The range argument is not in the right format.')
             sys.exit(95)
@@ -435,7 +437,7 @@ if __name__ == '__main__':
             logging.error(f"Sorry, you forget to edit the gs_credential.json - "
                           f"it still contains the dummy user/password "
                           f"[{user_credential[0]['user']}/{user_credential[0]['password']}].")
-            exit(98)
+            sys.exit(98)
 
     if not os.path.exists(f"{user_data[0]['downloadtarget']}"):
         logging.info(f"Create folder [{user_data[0]['downloadtarget']}]")
@@ -580,7 +582,7 @@ if __name__ == '__main__':
         download_range(range_start_year, range_start_month, range_end_year, range_end_month)
     else:
         logging.error('Run Type: not supported')
-        sys.exit(95)
+        sys.exit(97)
 
     logging.info(f"Last requested edition downloaded - give job some time (10s) to finish, for no good reason...")
     sleep(10)
