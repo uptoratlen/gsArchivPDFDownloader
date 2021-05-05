@@ -1,20 +1,24 @@
 # gsArchivPDFDownloader
 
+
 ## Table of contents
+
+# Table of contents
+
 - [Overview](#overview)
-  * [Demo Video](#demo-video)
-  * [Exclusion](#exclusion)
+  - [Demo Video](#demo-video)
+  - [Exclusion](#exclusion)
 - [Technologies](#technologies)
 - [Setup](#setup)
 - [Edit gs_credential.json](#edit-gs_credentialjson)
 - [Edit gs.json](#edit-gsjson)
-  * [Filenamepattern in gs.json](#filenamepattern-in-gsjson)
-  * [editions in gs.json](#editions-in-gsjson)
+  - [Filenamepattern in gs.json](#filenamepattern-in-gsjson)
+  - [skip_editions in gs.json](#skip_editions-in-gsjson)
 - [Run](#run)
-  * [based on gs.json](#based-on-gsjson)
-  * [commandline argument](#commandline-argument)
-    + [--year](#--year)
-    + [--latest](#--latest)
+  - [commandline argument](#commandline-argument)
+    - [--full](#--full)
+    - [--year](#--year)
+    - [--latest](#--latest)
 - [Remarks](#remarks)
 - [FAQ](#faq)
 
@@ -37,12 +41,11 @@ Video shows Version 0.1 - current solution works similar, with a bit different l
 The video displays what the start of the program would look like, than the start of the download. In this sample there are already some previous downloaded file. It will skip 1998/1 to 1998/6, than it will download 1998/7. Skip 8/1998 as also previously downloaded. Download 9/1998 and skip again 10/1998. The job was stopped for demo after 1/1999 and finally a tree is displayed. This is what the years should look like in the very end.
 
 ### Exclusion
-* Since v0.2 and v0.3 there is none of the exception existing anymore. The user is now in full control of what requested download are part of the job.
-* The edition 2017/10 is still a exception: Caused by a error in "Blättercatalog"  
-(thx to thomas-k for motivation): A waring will be displayed in case you try to download this edition  
+* The edition 2017/10 is still a exception: Caused by an error in "Blättercatalog"  
+To prevent a error the edition is listed in [gs.json](#edit-gsjson) in key "skip_editions"  
+(thx to thomas-k for motivation): A warning will be displayed in case you try to download this edition  
   (09 March 2021) - I contacted GS on that.   
   (12 March 2021) - the edition is downloadable as a ZIP,but not from blätterkatalog which uses the program  
-  (28 April 2021) - Even worse the Blätterkatalog does not even display the edition anymore.....
   
 ## Technologies
 The gsArchivPDFDownloader obviously was created in Python with Selenium and the geckodriver(firefox).
@@ -68,14 +71,23 @@ First use (env)
 ```
 pip install selenium
 ```
-* Get gsArchivPDFDownloader.py and gs.json from this repository
+* Get gsArchivPDFDownloader.py and gs.json from this repository  
+Use one of the two options  
+  - Go to "releases" and download the last release published as ZIP
+  - Download from main   
 ```
 Click on "Code" (green button on top), than select "Download ZIP"
 Extract the Content to some writeable folder. Eg. \gsDownloader\gsArchivePDFDownloader 
 ```
+The difference is that main, may contain newer und not so tested code.
+
 * Get geckodriver(.exe) as zip from 
 https://github.com/mozilla/geckodriver/releases, extract the geckodriver.exe
-and place it in the same folder as the gsArchivPDFDownloader.py  
+and place it in the same folder as the gsArchivPDFDownloader.py
+  ```
+  Hint: The "pip install geckodriver" will install the driver also, but may not work, as I expect the driver in the 
+  same folder as the .py file
+  ```
 
 ## Edit gs_credential.json
 This is a not working sample ! - Get the real one from code or release page.
@@ -102,56 +114,35 @@ This is a not working sample ! - Get the real one from code or release page.
     {
         "log_level": "INFO",
         "downloadtarget": "c:\\download\\Gamestar-archive",
-        "edition2d": "No",
+        "edition2d": "Yes",
         "downloadtimeout": 240,
-        "abortlimit": 2,        
+        "abortlimit": 2,
         "filenamepattern_intarget": "GameStar Nr. <ausgabe>_<jahr>.pdf",
-        "filenamepattern_fromserver": "GameStar Nr. <ausgabe>_<jahr>.pdf"
+        "filenamepattern_fromserver": "GameStar Nr. <ausgabe>_<jahr>.pdf",
         "latestdownload": [
             {
-                "year": 2021,
+                "year": "2021",
                 "edition": "3"
             }
         ],
-        "browser_display_on_latest": "no",        
-        "editions":[
-         {
-            "1997":"9,10,11,12"
-         },
-         {
-            "1998":"1,2,3,4,5,6,7,8,9,10,11,12"
-         },
-         .......
-         {
-            "2013":"1,2,3,4,5,6,7,8,9,10,11,12,13"
-         },
-         .......
-         {
-            "2017":"1,2,3,4,5,6,7,8,9,11,12,13"
-         },
-         .......         
-         {
-            "2020":"1,2,3,4,5,6,7,8,9,10,11,12"
-         },
-         {
-            "2021":"1,2,3,4"
-         }
-      ]        
+        "browser_display_on_latest": "no",
+        "skip_editions": [
+            {
+                "2017": "10"
+            }
+        ]
     }
 ]
 ```
-| Name          | value allowed        | Remark|introduced/removed
+| Name          | value allowed        | Remark|introduced
 |:---|:---:|:---|:---:|
-| ~~user~~      | string | moved to extra file since v0.5.6; ~~your gs user name~~ | ~~v0.1~~/v0.5.6|
-| ~~password~~      | string   | moved to extra file since v0.5.6; ~~your gs user password~~ | ~~v0.1~~/v0.5.6|
-| log_level      | [debug/info/warning/error/critical]   | The loglevel just in case needed - info is default, debug is fallback | v0.5|
+| log_level      | [debug/info/warning/error/critical]   | The log level just in case needed - info is default, debug is fallback | v0.5|
 | downloadtarget | string   | please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive" will look like "c:\\\\download\\\\Gamestar-archive". | v0.1|
 | edition2d | [Yes/No] | "No" will use the edition from the server like 1,2,3,4,5; "Yes" will create edition names like "01,02,03,04,05..." | v0.2|
-| ~~skip20yearedition~~ | deprecated  | not used anymore since V0.3; see ["editions"](#editions-in-gsjson) for more info | ~~v0.2~~/v0.3|
 | downloadtimeout | int | Time in seconds the download wait for a download before trying to download the next edition. This is a max timer, in case the edition is completed before that time it will not wait until the max time. Currently only successful downloads will be moved to target | v0.1|
 | abortlimit | int | default 2; In case a "-year" run is selected and 'abortlimit' edition in sequence are not found the run will be aborted. A new success after a failed download will reset the counter.   | v0.5.6|
 | browser_display_on_latest | [Yes/No]  | In case the commandline option --latest or -l thi soption allow a hidden browser on value "no", "yes" will display the browser also on this commandline option  | v0.5|
-| latestdownload | list] | in case the commandline option --latest/-l is used this will be updated with the latest downloaded edition, so the next run (month) will start from that edition the copy; see ["latest"](#--latest)  | v0.5|
+| latestdownload | list] | in case the commandline option --latest/-l is used this will be updated with the latest downloaded edition, so the next run (month) will start from that edition the copy; see ["--latest"](#--latest)  | v0.5|
 
 
 
@@ -172,43 +163,35 @@ To overcome this small but maybe annoying thing (maybe "they" did not like my do
 As mentioned in the start and end, if "they" change fundamental things, upsi....it will not work anymore.
 With that we could try a small fix.
 
-### editions in gs.json
+### skip_editions in gs.json
 | Name          | value allowed        | Remark|
 |:---|:---:|:---|
-| editions      | string   | a list of each year request to download with a comma separated value; no spaces,no leading 0|
+| skip_editions      | string   | a list of each year with editions that cause error while downloading (server issue), request to download with a comma separated value; no spaces,no leading 0|
 
-Example a list like (for documentation I removed the rest of the json)
-```
-[
-    {
-    "editions":[
-         {
-            "1997":"9,10"
-         },
-         {
-            "2006":"4,6,7,10"
-         },
-         {
-            "2013":"13"
-         },
-         {
-            "2021":"1,2,3,4"
-         }
-      ]        
-    }
-]
-```
-This list would download 1997 editions 9 and 10; from 206 the editions 4,6,7,10; from 2013 only 13 and from 2021 the editons 1 to 4.
-
-Attention:  
-_If you create a list like ```"2035":"4,5,6"``` you will need a time-machine, as the year **2035** is not yet reached and the editions **4,5,6** do really not exist by now....  
-In other words, **the script does not check of any misconfiguration or meaningless values**._
+Currently, (May 2021) there should be only one edition (2017/10)
 
 ## Run 
-### based on gs.json
+### commandline argument
+```
+usage: gsArchivPDFDownloader.py [-h] [-y YEAR]
+
+Download a certain year with all editions
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -l, --latest          try to download always the newest (starting from
+                        2021-03)
+  -y YEAR, --year YEAR  a single year in range [1997-2035]
+  -V, --version         show program's version number and exit
+```
+
+#### --full
 To start a download job open a cmd and type
 ```
-python gsArchivPDFDownloader.py
+python gsArchivPDFDownloader.py -f 
+```
+```
+python gsArchivPDFDownloader.py --full 
 ```
 
 Now the job will start, it will check and create the "downloadtarget" folder.
@@ -229,29 +212,17 @@ C:
                               +2000  <-- all editions of that year (12)
                               +...         
 ```
-The requested editions are stored in the gs.json ``` "editions" ```
 
-### commandline argument
-```
-usage: gsArchivPDFDownloader.py [-h] [-y YEAR]
 
-Download a certain year with all editions
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -l, --latest          try to download always the newest (starting from
-                        2021-03)
-  -y YEAR, --year YEAR  a single year in range [1997-2035]
-  -V, --version         show program's version number and exit
-```
 #### --year
-eg. a commandline  ``` python gsArchivPDFDownloader.py -y 2020 ``` will download all editions from 2020.
-In case the commandline is used due to 2017 each year will try to get a 13 editions.  
-Yes I know that does not make much sense, but let me fix that in a future edition in a better way.  
+eg. a commandline  ``` python gsArchivPDFDownloader.py -y 2020 ``` or  ``` python gsArchivPDFDownloader.py --year 2020``` 
+will download all editions from 2020.
+In case the commandline is used, each year will try to get a 13 editions. Which currently does only exists in 2017.  
+Yes I know that does not make much sense, and this issue will be adressed in a next version.  
+
 This run type uses the "abortlimit" of the gs.json file to trigger an abort if the number is reached.  
 in case the number is 2 and the flow is like this: success - fail - fail > Abort  
 in case the number is 2 and the flow is like this: success - fail - success > the run will continue  
-
 
 
 #### --latest
@@ -280,19 +251,25 @@ Not sure how many this script used, but as long as I will use it I will update t
 ## FAQ
 * Will it always work?  
   No, it depends on the webpage. In case the fields are renamed it will not work anymore. Taking in account that the basic function will stay the same, editing the names should not be a big issue.
+
 * It not even download a single bit.  
   Did you edit the gs.json? Or It is broken already, sorry....drop me a note and I will a) fix or b)remove this :-)
   Send me the logfile via github (of course the credentials are blurred in the file)
+
 * It will only download a fraction of the edition like a sample.  
   You may not enter in gs.json the right credentials
+
 * Hell, why you use simple sleeps?  
   ...one time effort...lazy?...eh...I guess you are right, but it worked for me.....sorry. And I tried some limited conditional waits...
 
 * After some successful downloads the job stopped, what is this?  
-  I assume this is caused by a timeout, which is not caught. Just restart the job, it will start from the beginning, but skips all already downloaded pdf.
+  I assume this is caused by a timeout, which is not caught. Just restart the job, it will start from the beginning, 
+  but skips all already downloaded pdf.  thelog may report these editions and you should try a rerun withthte same 
+  command. This may overcome the issue by it self.
 
 * You mixed German and English in the logging?  
   Yes, as I said it was more a one timer. In case I got some time I may convert all to one language.
+
 * One timer? In version 0.x ? You cheating liar....  
   I need to confess, I added some nice features after my initial use...for others...so it's ok?
 
