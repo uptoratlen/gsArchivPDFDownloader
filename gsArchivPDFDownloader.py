@@ -1,7 +1,8 @@
-__version_info__ = ('0', '6', '0')
+__version_info__ = ('0', '6', '1')
 __version__ = '.'.join(__version_info__)
 
 import argparse
+import glob
 import re
 import shutil
 from datetime import datetime
@@ -246,9 +247,11 @@ def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_target
         driver.get(f'https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahrdl}&bkm={ausgabedl}')
         sleep(8)
 
-        # also remove pending part files
-        if os.path.exists(f"{user_data[0]['downloadtarget']}/{_filenamepattern_download}*"):
-            os.remove(f"{user_data[0]['downloadtarget']}/{_filenamepattern_download}*")
+        filesdl = glob.glob(f"{user_data[0]['downloadtarget']}/*.pdf*")
+        for fndl in filesdl:
+            logging.debug(f"File from previous run found - remove [{fndl}]")
+            os.remove(fndl)
+        logging.info(f"Previous files found, count = {format(len(filesdl))}, removed")
         sleep(5)
 
         try:
@@ -346,7 +349,7 @@ def move_downloaded(_targetfolder, _year, _fn_downloaded, _fn_target, _timeout=3
         sleep(1.5)
     if os.path.exists(f'{_targetfolder}/{_fn_downloaded}'):
         shutil.move(f'{_targetfolder}/{_fn_downloaded}',
-                  f'{_targetfolder}/{_year}/{_fn_target}')
+                    f'{_targetfolder}/{_year}/{_fn_target}')
         logging.info('Move Download done successful')
         return True
     else:
@@ -415,7 +418,7 @@ if __name__ == '__main__':
                                          f"{datetime.now().year}")
     parser.add_argument('-y', '--year', type=int, help='a single year in range [1997-2035]')
     parser.add_argument('-r', '--range', type=str, help='a range in fomrat yyyy:mm-yyyy:mm; example -r 2019:09-2020:11')
-    parser.add_argument('-V', '--version', action='version', version="%(prog)s ("+__version__+")")
+    parser.add_argument('-v', '--version', action='version', version="%(prog)s ("+__version__+")")
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(0)
@@ -424,7 +427,7 @@ if __name__ == '__main__':
     if args.year and (args.year < 1997 or args.year > 2035):
         parser.error("Select a year within range 1997 to 2035")
     if args.range:
-        matched = re.match("^(199[7-9]|20[0-3]\d):(0[0-9]|1[0123])-(199[7-9]|20[0-3]\d):(0[0-9]|1[0123])$", args.range)
+        matched = re.match(r"^(199[7-9]|20[0-3]\d):(0[0-9]|1[0123])-(199[7-9]|20[0-3]\d):(0[0-9]|1[0123])$", args.range)
         if not bool(matched):
             logging.error('The range argument is not in the right format.')
             sys.exit(95)

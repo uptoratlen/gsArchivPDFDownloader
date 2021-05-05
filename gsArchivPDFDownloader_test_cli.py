@@ -23,14 +23,14 @@ def test_version2():
     display the version
     """
     exit_status = os.system('python -m gsArchivPDFDownloader -V')
-    assert exit_status == 0
+    assert exit_status == 2
 
 def test_version3():
     """
     fail as arg is not supported
     """
     exit_status = os.system('python -m gsArchivPDFDownloader -v')
-    assert exit_status == 2
+    assert exit_status == 0
 
 
 
