@@ -62,7 +62,7 @@ def _hlp_display_type(varx):
     Returns:
 
     """
-    print(type(varx))
+    print(f"{varx} if of type {type(varx)}")
     return True
 
 
@@ -127,6 +127,62 @@ def filename_modification(filestring_downloaded, filestring_target, edition_mont
         exit(99)
 
 
+def download_range(_range_start_year, _range_start_month, _range_end_year, _range_end_month):
+    """Download wrapper for range and full
+
+    Args:
+        _range_start_year (str): year of requested downloads start
+        _range_start_month (str): month/edition of requested downloads start
+        _range_end_year (str): year of requested downloads end
+        _range_end_month (str): month/edition of requested downloads end
+
+    Returns:
+        None
+
+    """
+    _jahr = _range_start_year
+    _ausgabe = _range_start_month
+    _continue_download = True
+    error_list = []
+    _abort_flag = 0
+    while _continue_download:
+        logging.info(f"Trying now to download  (Edition/Year) => ({_ausgabe}/{_jahr})")
+        _result = download_edition(int(_jahr), int(_ausgabe),
+                                   user_data[0]['filenamepattern_fromserver'],
+                                   user_data[0]['filenamepattern_intarget'], user_data[0]['skip_editions'])
+        if _result < 10:
+            _abort_flag = 0
+        else:
+            logging.warning(f'Download failed(load) - adding [{_ausgabe}/{_jahr}] to report.')
+            error_list.append(f'{_jahr}/{_ausgabe}')
+            _abort_flag += 1
+            logging.info(f"As edition was not found; increase abort counter "
+                         f"[{_abort_flag}/{user_data[0]['abortlimit']}]")
+
+        if _abort_flag >= user_data[0]['abortlimit']:
+            logging.info(f'The abort limitcounter reached the maxmium allwed and will now abort the run')
+            break
+
+        _ausgabe = str(int(_ausgabe) + 1)
+        if int(_jahr) == 2013 and int(_ausgabe) == 13:
+            logging.info('Special year 2013 with 13th edition in range')
+        elif (int(_jahr) != 2013 and int(_ausgabe) == 13) or (int(_jahr) == 2013 and int(_ausgabe) == 14):
+            logging.info('Roll over in loop to next year')
+            _ausgabe = str(1)
+            _jahr = str(int(_jahr) + 1)
+
+        if int(_range_end_year + _range_end_month.zfill(2)) >= int(_jahr + _ausgabe.zfill(2)):
+            logging.debug('Loop fine - expecting still a next edition.')
+            continue
+        else:
+            logging.debug('Stop latest download loop - max reached.')
+            if len(error_list) > 0:
+                logging.warning(f'Some edition showed some recoverable issues while downloading -'
+                                f' try same run a second time.')
+                logging.warning(f'{error_list}')
+            _continue_download = False
+
+
 def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_target, _skip_editions):
     """The main download function
 
@@ -135,7 +191,8 @@ def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_target
         ausgabedl (int): month/edition of requested downloads
         _filestring_download (str): The filename string from json file for the download name
         _filestring_target (str): The filename string from json file for the target/local name
-        _skip_editions (dict): dict of all special editions that should be skipped as they are expected to cause a issue (server side error)
+        _skip_editions (dict): dict of all special editions that should be skipped as they are
+         expected to cause a issue (server side error)
 
     Returns:
         dl_state (int): flag for return value
@@ -239,7 +296,8 @@ def wait_for_download(filedownloadfullpath, timeout=30):
         timeout (int, optional): Timeout given for wait until no partial files are seen anymore
 
     Returns:
-        The return value. True for Download is complete, no partial files seen, False for Partial donwloaded file still seen after timeout.
+        The return value. True for Download is complete, no partial files seen,
+         False for Partial donwloaded file still seen after timeout.
 
     """
     logging.debug(f'Download timeout is:[{timeout}]')
@@ -349,6 +407,10 @@ if __name__ == '__main__':
                         const=True, help=f"try to download always the newest (starting from "
                                          f"{user_data[0]['latestdownload'][0]['year']}-"
                                          f"{user_data[0]['latestdownload'][0]['edition']})")
+    parser.add_argument('-f', '--full',  action='store_const',
+                        const=True, help=f"a full download of all editions from 1997/09 to "
+                                         f"{datetime.now().month}/"
+                                         f"{datetime.now().year}")
     parser.add_argument('-y', '--year', type=int, help='a single year in range [1997-2035]')
     parser.add_argument('-r', '--range', type=str, help='a range in fomrat yyyy:mm-yyyy:mm; example -r 2019:09-2020:11')
     parser.add_argument('-V', '--version', action='version', version="%(prog)s ("+__version__+")")
@@ -405,18 +467,18 @@ if __name__ == '__main__':
         driver = _open_gs_and_login(url, user_credential[0]['user'], user_credential[0]['password'],
                                     optionsFF, profileFF)
         year = args.year
-        abortflag = 0
+        abort_flag = 0
         for edition in range(1, 14):
             result = download_edition(int(year), edition, user_data[0]['filenamepattern_fromserver'],
                                       user_data[0]['filenamepattern_intarget'], user_data[0]['skip_editions'])
             if result < 10:
-                abortflag = 0
+                abort_flag = 0
             else:
-                abortflag += 1
+                abort_flag += 1
                 logging.info(f"As edition was not found; increase abort counter "
-                             f"[{abortflag}/{user_data[0]['abortlimit']}]")
+                             f"[{abort_flag}/{user_data[0]['abortlimit']}]")
 
-            if abortflag >= user_data[0]['abortlimit']:
+            if abort_flag >= user_data[0]['abortlimit']:
                 logging.info(f'The abort limitcounter reached the maxmium allwed and will now abort the run')
                 break
 
@@ -484,57 +546,38 @@ if __name__ == '__main__':
         logging.info(f'Update JSON file ({json_config_file})')
         with open(json_config_file, 'w') as outfile:
             json.dump(user_data, outfile, indent=4, sort_keys=False)
+    elif args.full:
+        logging.info('Run Type: Full')
+        range_start_year = "1997"
+        range_start_month = "09"
+        range_end_year = str(datetime.now().year)
+        range_end_month = str(datetime.now().month)
+
+        logging.debug(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
+        driver = _open_gs_and_login(url, user_credential[0]['user'], user_credential[0]['password'],
+                                    optionsFF, profileFF)
+        download_range(range_start_year, range_start_month, range_end_year, range_end_month)
+
     elif args.range:
         logging.info('Run Type: Range')
         range_selection = args.range
-        abortflag = 0
+
         range_selection_split = range_selection.split("-")
         range_start_year = range_selection_split[0].split(":")[0]
         range_start_month = range_selection_split[0].split(":")[1]
         range_end_year = range_selection_split[1].split(":")[0]
         range_end_month = range_selection_split[1].split(":")[1]
+
         logging.debug(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
-        if int(str(range_start_year) + str(range_start_month).zfill(2)) <= 199708:
+        if int(range_start_year + range_start_month.zfill(2)) <= 199708:
             logging.error('Range start is to early.')
             sys.exit(95)
-        if int(str(range_start_year) + str(range_start_month).zfill(2)) > \
-                int(str(range_end_year) + str(range_end_month).zfill(2)):
+        if int(range_start_year + range_start_month.zfill(2)) > int(range_end_year + range_end_month.zfill(2)):
             logging.error('Range end is older than start.')
             sys.exit(95)
-
         driver = _open_gs_and_login(url, user_credential[0]['user'], user_credential[0]['password'],
                                     optionsFF, profileFF)
-        jahr = range_start_year
-        ausgabe = range_start_month
-        continue_download = True
-        error_list = []
-        while continue_download:
-            logging.info(f"Trying now to download  (Edition/Year) => ({ausgabe}/{jahr})")
-            success = download_edition(int(jahr), int(ausgabe),
-                                       user_data[0]['filenamepattern_fromserver'],
-                                       user_data[0]['filenamepattern_intarget'], user_data[0]['skip_editions'])
-            if success >= 10:
-                logging.warning(f'Download failed(load) - adding [{ausgabe}/{jahr}] to report.')
-                error_list.append(f'{jahr}/{ausgabe}')
-
-            ausgabe = str(int(ausgabe) + 1)
-            if int(jahr) == 2013 and int(ausgabe) == 13:
-                logging.info('Special year 2013 with 13th edition in range')
-            elif (int(jahr) != 2013 and int(ausgabe) == 13) or (int(jahr) == 2013 and int(ausgabe) == 14):
-                logging.info('Roll over in loop to next year')
-                ausgabe = str(1)
-                jahr = str(int(jahr) + 1)
-
-            if int(str(range_end_year) + str(range_end_month).zfill(2)) >= int(str(jahr) + str(ausgabe).zfill(2)):
-                logging.debug('Loop fine - expecting still a next edition.')
-                continue
-            else:
-                logging.debug('Stop latest download loop - max reached.')
-                if len(error_list) > 0:
-                    logging.warning(f'Some edition showed some recoverable issues while downloading -'
-                                    f' try same run a second time.')
-                    logging.warning(f'{error_list}')
-                continue_download = False
+        download_range(range_start_year, range_start_month, range_end_year, range_end_month)
     else:
         logging.error('Run Type: not supported')
         sys.exit(95)

@@ -173,16 +173,21 @@ Currently, (May 2021) there should be only one edition (2017/10)
 ## Run 
 ### commandline argument
 ```
-usage: gsArchivPDFDownloader.py [-h] [-y YEAR]
+usage: gsArchivPDFDownloader.py [-h] [-l] [-f] [-y YEAR] [-r RANGE] [-V]
 
-Download a certain year with all editions
+Download GameStar PDFs from webpage
 
 optional arguments:
   -h, --help            show this help message and exit
   -l, --latest          try to download always the newest (starting from
-                        2021-03)
+                        2021-3)
+  -f, --full            a full download of all editions from 1997/09 to 5/2021
   -y YEAR, --year YEAR  a single year in range [1997-2035]
+  -r RANGE, --range RANGE
+                        a range in fomrat yyyy:mm-yyyy:mm; example -r
+                        2019:09-2020:11
   -V, --version         show program's version number and exit
+
 ```
 
 #### --full
