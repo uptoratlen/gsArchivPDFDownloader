@@ -1,8 +1,6 @@
 # gsArchivPDFDownloader
 
 
-## Table of contents
-
 # Table of contents
 
 - [Overview](#overview)
