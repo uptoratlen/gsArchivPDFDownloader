@@ -172,7 +172,7 @@ Currently, (May 2021) there should be only one edition (2017/10)
 ## Run 
 ### commandline argument
 ```
-usage: gsArchivPDFDownloader.py [-h] [-l] [-f] [-y YEAR] [-r RANGE] [-V]
+usage: gsArchivPDFDownloader.py [-h] [-l] [-f] [-y YEAR] [-r RANGE] [-v]
 
 Download GameStar PDFs from webpage
 
@@ -185,7 +185,7 @@ optional arguments:
   -r RANGE, --range RANGE
                         a range in fomrat yyyy:mm-yyyy:mm; example -r
                         2019:09-2020:11
-  -V, --version         show program's version number and exit
+  -v, --version         show program's version number and exit
 
 ```
 
