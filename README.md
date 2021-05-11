@@ -40,11 +40,12 @@ Video shows Version 0.1 - current solution works similar, with a bit different l
 The video displays what the start of the program would look like, than the start of the download. In this sample there are already some previous downloaded file. It will skip 1998/1 to 1998/6, than it will download 1998/7. Skip 8/1998 as also previously downloaded. Download 9/1998 and skip again 10/1998. The job was stopped for demo after 1/1999 and finally a tree is displayed. This is what the years should look like in the very end.
 
 ### Exclusion
-* The edition 2017/10 is still a exception: Caused by an error in "Blättercatalog"  
+* The edition 2017/10 was a exception until May 11th 2021: Caused by an error in "Blättercatalog"  
 To prevent a error the edition is listed in [gs.json](#edit-gsjson) in key "skip_editions"  
 (thx to thomas-k for motivation): A warning will be displayed in case you try to download this edition  
   (09 March 2021) - I contacted GS on that.   
   (12 March 2021) - the edition is downloadable as a ZIP,but not from blätterkatalog which uses the program  
+  (11 May   2021) - hightower5 reported this as working -> see issue#10
   
 ## Technologies
 The gsArchivPDFDownloader obviously was created in Python with Selenium and the geckodriver(firefox).
