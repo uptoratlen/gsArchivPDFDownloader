@@ -121,11 +121,11 @@ def filename_modification(filestring_downloaded, filestring_target, edition_mont
         logging.info(f'Filename after Download on disk :[{filestring_downloaded}]')
         logging.info(f'Filename for Target(modified)   :[{filestring_target}]')
         return filestring_downloaded, filestring_target
-    except TypeError as e:
-        logging.exception(f'TypeError Exception Raised - str expected int found -{e}')
+    except TypeError as _e:
+        logging.exception(f'TypeError Exception Raised - str expected int found -{_e}')
         sys.exit(99)
-    except (ValueError, AttributeError) as e:
-        logging.exception(f'ValueError/AttributeError Exception Raised - {e}')
+    except (ValueError, AttributeError) as _e:
+        logging.exception(f'ValueError/AttributeError Exception Raised - {_e}')
         sys.exit(99)
 
 
@@ -285,8 +285,8 @@ def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_target
         logging.exception(f'Browser page load failed;maybe edition does not exist;or very slow load '
                           f'- timeout exception:{t}')
 
-    except Exception as e:
-        logging.exception(f'Exception:{e}')
+    except Exception as _e:
+        logging.exception(f'Exception:{_e}')
         driver.quit()
         sys.exit(99)
 
@@ -414,6 +414,10 @@ if __name__ == '__main__':
                                          f"{user_data[0]['latestdownload'][0]['edition']})")
     parser.add_argument('-f', '--full',  action='store_const',
                         const=True, help=f"a full download of all editions from 1997/09 to "
+                                         f"{datetime.now().month}/"
+                                         f"{datetime.now().year}")
+    parser.add_argument('-c', '--cover',  action='store_const',
+                        const=True, help=f"a full download of all covers from from 1997/09 to "
                                          f"{datetime.now().month}/"
                                          f"{datetime.now().year}")
     parser.add_argument('-y', '--year', type=int, help='a single year in range [1997-2035]')
@@ -583,6 +587,63 @@ if __name__ == '__main__':
         driver = _open_gs_and_login(url, user_credential[0]['user'], user_credential[0]['password'],
                                     optionsFF, profileFF)
         download_range(range_start_year, range_start_month, range_end_year, range_end_month)
+    elif args.cover:
+        logging.info('Run Type: Covers (full)')
+        profileFF.set_preference('browser.download.dir', f"{user_data[0]['downloadtargetcovers']}")
+        optionsFF.headless = False
+        if user_data[0]['browser_display_on_latest'].lower() == "no":
+            optionsFF.headless = True
+        driver = webdriver.Firefox(options=optionsFF, firefox_profile=profileFF)
+        driver.set_page_load_timeout(1)
+        wait = WebDriverWait(driver, 5)
+        if not os.path.exists(f"{user_data[0]['downloadtargetcovers']}"):
+            logging.info(f"Create folder {user_data[0]['downloadtargetcovers']}")
+            os.makedirs(f"{user_data[0]['downloadtargetcovers']}")
+
+        try:
+            for jahr in range(2000, datetime.now().year+1):
+                for monat in range(1, 13):
+                    filename_cover_intarget_sub = f'GS{jahr}_{str(monat).zfill(2)}_Inlay-Coverpack'
+
+                    if os.path.exists(f"{user_data[0]['downloadtargetcovers']}/{jahr}/"
+                                      f"{filename_cover_intarget_sub}.pdf"):
+                        logging.info("Skip, download of cover - already existing in target")
+                        continue
+
+                    files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*.pdf*")
+                    for fn in files:
+                        logging.debug(f"File from previous run found - remove [{fn}]")
+                        os.remove(fn)
+                    logging.debug(f"Previous files found, count = {format(len(files))}, removed")
+                    try:
+                        logging.info(f'https://www.gamestar.de/dvdhuelle{str(monat).zfill(2)}{jahr}')
+                        driver.get(f'https://www.gamestar.de/dvdhuelle{str(monat).zfill(2)}{jahr}')
+                    except TimeoutException as e:
+                        logging.info("Expected timeout - caused by selenium pdf download")
+                        pass
+                    except Exception as e:
+                        logging.error(e)
+                        pass
+                    logging.info("Check for newest file...")
+                    list_of_files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*")
+                    newest_file = max(list_of_files, key=os.path.getctime)
+                    logging.debug(f"Newest file (assuming downloaded):{newest_file}")
+                    if ".pdf" not in newest_file:
+                        logging.warning(f"It looks like this cover is missing on server:[{str(monat).zfill(2)}{jahr}]")
+                        continue
+
+                    if not os.path.exists(f"{user_data[0]['downloadtargetcovers']}/{jahr}"):
+                        logging.info(f"Create folder {user_data[0]['downloadtargetcovers']}/{jahr}")
+                        os.makedirs(f"{user_data[0]['downloadtargetcovers']}/{jahr}")
+
+                    result_cover = wait_for_download(f"{newest_file}", timeout=10)
+                    logging.info(f"Move now file[{newest_file}] to target[{user_data[0]['downloadtargetcovers']}/"
+                                 f"{jahr}/{filename_cover_intarget_sub}.pdf]")
+                    shutil.move(f"{newest_file}", f"{user_data[0]['downloadtargetcovers']}/{jahr}/"
+                                                  f"{filename_cover_intarget_sub}.pdf")
+        except Exception as e:
+            logging.error(e)
+            pass
     else:
         logging.error('Run Type: not supported')
         sys.exit(97)

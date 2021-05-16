@@ -2,6 +2,7 @@
     {
         "log_level": "INFO",
         "downloadtarget": "c:\\download\\Gamestar-archive",
+        "downloadtargetcovers": "c:\\download\\Gamestar-archive\\covers",
         "edition2d": "Yes",
         "downloadtimeout": 240,
         "abortlimit": 2,
