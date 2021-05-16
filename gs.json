@@ -15,9 +15,6 @@
         ],
         "browser_display_on_latest": "no",
         "skip_editions": [
-            {
-                "2017": "10"
-            }
         ]
     }
 ]
