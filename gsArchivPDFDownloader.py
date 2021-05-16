@@ -599,7 +599,7 @@ if __name__ == '__main__':
             os.makedirs(f"{user_data[0]['downloadtargetcovers']}")
 
         try:
-            for jahr in range(2010, datetime.now().year+1):
+            for jahr in range(2000, datetime.now().year+1):
                 for monat in range(1, 13):
                     filename_cover_intarget_sub = f'GS{jahr}_{str(monat).zfill(2)}_Inlay-Coverpack'
 
@@ -612,7 +612,7 @@ if __name__ == '__main__':
                     for fn in files:
                         logging.debug(f"File from previous run found - remove [{fn}]")
                         os.remove(fn)
-                    logging.info(f"Previous files found, count = {format(len(files))}, removed")
+                    logging.debug(f"Previous files found, count = {format(len(files))}, removed")
                     try:
                         logging.info(f'https://www.gamestar.de/dvdhuelle{str(monat).zfill(2)}{jahr}')
                         driver.get(f'https://www.gamestar.de/dvdhuelle{str(monat).zfill(2)}{jahr}')
@@ -625,7 +625,7 @@ if __name__ == '__main__':
                     logging.info("Check for newest file...")
                     list_of_files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*")
                     newest_file = max(list_of_files, key=os.path.getctime)
-                    logging.info(f"Newest file (assuming downloaded):{newest_file}")
+                    logging.debug(f"Newest file (assuming downloaded):{newest_file}")
                     if ".pdf" not in newest_file:
                         logging.warning(f"It looks like this cover is missing on server:[{str(monat).zfill(2)}{jahr}]")
                         continue
