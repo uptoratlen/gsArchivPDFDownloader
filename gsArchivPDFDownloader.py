@@ -1,4 +1,4 @@
-__version_info__ = ('0', '6', '1')
+__version_info__ = ('0', '6', '3')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -10,6 +10,11 @@ import json
 import os
 import sys
 from time import sleep, time
+import tempfile
+
+import ghostscript
+import win32print
+
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -184,6 +189,62 @@ def download_range(_range_start_year, _range_start_month, _range_end_year, _rang
                 logging.warning(f'{error_list}')
             _continue_download = False
 
+def download_cover(_jahr, _monat):
+    """The cover download function
+
+    Args:
+        _jahr (int): year of requested cover
+        _monat (int): month/edition of requested cover
+
+    Returns:
+        dl_state (int): flag for return value
+        0 = ok
+        1 = skipped
+        2 = existing
+        3 = before 1997/08
+        10 = failed to download
+        11 = failed to move
+
+    """
+    filename_cover_intarget_sub = f'GS{_jahr}_{str(_monat).zfill(2)}_Inlay-Coverpack'
+
+    if os.path.exists(f"{user_data[0]['downloadtargetcovers']}/{jahr}/"
+                      f"{filename_cover_intarget_sub}.pdf"):
+        logging.info("Skip, download of cover - already existing in target")
+        return 2
+
+    files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*.pdf*")
+    for fn in files:
+        logging.debug(f"File from previous run found - remove [{fn}]")
+        os.remove(fn)
+    logging.debug(f"Previous files found, count = {format(len(files))}, removed")
+    try:
+        logging.info(f'https://www.gamestar.de/dvdhuelle{str(_monat).zfill(2)}{_jahr}')
+        driver.get(f'https://www.gamestar.de/dvdhuelle{str(_monat).zfill(2)}{_jahr}')
+    except TimeoutException as e:
+        logging.info("Expected timeout - caused by selenium pdf download")
+        pass
+    except Exception as e:
+        logging.error(e)
+        pass
+    logging.info("Check for newest file...")
+    list_of_files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*")
+    newest_file = max(list_of_files, key=os.path.getctime)
+    logging.debug(f"Newest file (assuming downloaded):{newest_file}")
+    if ".pdf" not in newest_file:
+        logging.warning(f"It looks like this cover is missing on server:[{str(_monat).zfill(2)}{_jahr}]")
+        return 10
+
+    if not os.path.exists(f"{user_data[0]['downloadtargetcovers']}/{_jahr}"):
+        logging.info(f"Create folder {user_data[0]['downloadtargetcovers']}/{_jahr}")
+        os.makedirs(f"{user_data[0]['downloadtargetcovers']}/{_jahr}")
+
+    result_cover = wait_for_download(f"{newest_file}", timeout=10)
+    logging.info(f"Move now file[{newest_file}] to target[{user_data[0]['downloadtargetcovers']}/"
+                 f"{_jahr}/{filename_cover_intarget_sub}.pdf]")
+    shutil.move(f"{newest_file}", f"{user_data[0]['downloadtargetcovers']}/{_jahr}/"
+                                  f"{filename_cover_intarget_sub}.pdf")
+    return 0
 
 def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_target, _skip_editions):
     """The main download function
@@ -356,6 +417,42 @@ def move_downloaded(_targetfolder, _year, _fn_downloaded, _fn_target, _timeout=3
         logging.warning(f'Move not performed as file [{_targetfolder}/{_fn_downloaded}] is not seen.')
         return False
 
+def print_cover(cover_file, page_to_print):
+    """Extracts a given page number from the inlay file and than print the file to the default printer
+    the extract was added as direct print was not working in the expected way
+
+    Args:
+    cover_file (str): absolute path of input inlay pdf file
+    page_to_print (int): the page of the inlay to be printed
+
+    Returns:
+        none
+    """
+    temp1 = tempfile.mktemp('.eps')
+    page_seite=str(page_to_print)
+    args_extract = [
+        "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOPROMPT",
+        "-q",
+        "-sDEVICE=eps2write",
+        "-dFirstPage="+page_seite,
+        "-dLastPage="+page_seite,
+        "-sOutputFile=" + temp1,
+        "-f",
+        cover_file
+    ]
+    # for printing on default printer
+    args_printing = [
+        "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOPROMPT",
+        "-q",
+        "-dEPSFitPage",
+        "-sDEVICE=mswinpr2",
+        f'-sOutputFile="%printer%{win32print.GetDefaultPrinter()}"',
+        "-f",
+        temp1
+    ]
+    ghostscript.Ghostscript(*args_extract)
+    ghostscript.Ghostscript(*args_printing)
+    os.remove(temp1)
 
 if __name__ == '__main__':
 
@@ -412,16 +509,20 @@ if __name__ == '__main__':
                         const=True, help=f"try to download always the newest (starting from "
                                          f"{user_data[0]['latestdownload'][0]['year']}-"
                                          f"{user_data[0]['latestdownload'][0]['edition']})")
+    parser.add_argument('-cl', '--coverlatest',  action='store_const',
+                        const=True, help=f"try to download always the newest cover (starting from "
+                                         f"{user_data[0]['latestdownload_cover'][0]['year']}-"
+                                         f"{user_data[0]['latestdownload_cover'][0]['edition']})")
     parser.add_argument('-f', '--full',  action='store_const',
                         const=True, help=f"a full download of all editions from 1997/09 to "
                                          f"{datetime.now().month}/"
                                          f"{datetime.now().year}")
     parser.add_argument('-c', '--cover',  action='store_const',
-                        const=True, help=f"a full download of all covers from from 1997/09 to "
+                        const=True, help=f"a full download of all covers from from 2000/01 to "
                                          f"{datetime.now().month}/"
                                          f"{datetime.now().year}")
     parser.add_argument('-y', '--year', type=int, help='a single year in range [1997-2035]')
-    parser.add_argument('-r', '--range', type=str, help='a range in fomrat yyyy:mm-yyyy:mm; example -r 2019:09-2020:11')
+    parser.add_argument('-r', '--range', type=str, help='a range in format yyyy:mm-yyyy:mm; example -r 2019:09-2020:11')
     parser.add_argument('-v', '--version', action='version', version="%(prog)s ("+__version__+")")
     if len(sys.argv) == 1:
         parser.print_help()
@@ -603,47 +704,87 @@ if __name__ == '__main__':
         try:
             for jahr in range(2000, datetime.now().year+1):
                 for monat in range(1, 13):
-                    filename_cover_intarget_sub = f'GS{jahr}_{str(monat).zfill(2)}_Inlay-Coverpack'
-
-                    if os.path.exists(f"{user_data[0]['downloadtargetcovers']}/{jahr}/"
-                                      f"{filename_cover_intarget_sub}.pdf"):
-                        logging.info("Skip, download of cover - already existing in target")
-                        continue
-
-                    files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*.pdf*")
-                    for fn in files:
-                        logging.debug(f"File from previous run found - remove [{fn}]")
-                        os.remove(fn)
-                    logging.debug(f"Previous files found, count = {format(len(files))}, removed")
-                    try:
-                        logging.info(f'https://www.gamestar.de/dvdhuelle{str(monat).zfill(2)}{jahr}')
-                        driver.get(f'https://www.gamestar.de/dvdhuelle{str(monat).zfill(2)}{jahr}')
-                    except TimeoutException as e:
-                        logging.info("Expected timeout - caused by selenium pdf download")
-                        pass
-                    except Exception as e:
-                        logging.error(e)
-                        pass
-                    logging.info("Check for newest file...")
-                    list_of_files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*")
-                    newest_file = max(list_of_files, key=os.path.getctime)
-                    logging.debug(f"Newest file (assuming downloaded):{newest_file}")
-                    if ".pdf" not in newest_file:
-                        logging.warning(f"It looks like this cover is missing on server:[{str(monat).zfill(2)}{jahr}]")
-                        continue
-
-                    if not os.path.exists(f"{user_data[0]['downloadtargetcovers']}/{jahr}"):
-                        logging.info(f"Create folder {user_data[0]['downloadtargetcovers']}/{jahr}")
-                        os.makedirs(f"{user_data[0]['downloadtargetcovers']}/{jahr}")
-
-                    result_cover = wait_for_download(f"{newest_file}", timeout=10)
-                    logging.info(f"Move now file[{newest_file}] to target[{user_data[0]['downloadtargetcovers']}/"
-                                 f"{jahr}/{filename_cover_intarget_sub}.pdf]")
-                    shutil.move(f"{newest_file}", f"{user_data[0]['downloadtargetcovers']}/{jahr}/"
-                                                  f"{filename_cover_intarget_sub}.pdf")
+                    download_cover(jahr, monat)
         except Exception as e:
             logging.error(e)
             pass
+    elif args.coverlatest:
+        logging.info('Run Type: Covers (latest)')
+        profileFF.set_preference('browser.download.dir', f"{user_data[0]['downloadtargetcovers']}")
+        optionsFF.headless = False
+        if user_data[0]['browser_display_on_latest'].lower() == "no":
+            optionsFF.headless = True
+        driver = webdriver.Firefox(options=optionsFF, firefox_profile=profileFF)
+        driver.set_page_load_timeout(1)
+        wait = WebDriverWait(driver, 5)
+        if not os.path.exists(f"{user_data[0]['downloadtargetcovers']}"):
+            logging.info(f"Create folder {user_data[0]['downloadtargetcovers']}")
+            os.makedirs(f"{user_data[0]['downloadtargetcovers']}")
+
+        logging.info('Run Type: CoverLatest')
+        current_year = datetime.now().year
+        current_month = datetime.now().month
+        current_day = datetime.now().day
+        max_year_latest = datetime.now().year
+        max_month_latest = datetime.now().month
+
+        jahr = user_data[0]['latestdownload_cover'][0]['year']
+        ausgabe = user_data[0]['latestdownload_cover'][0]['edition']
+        jahr_lastdl = jahr
+        ausgabe_lastdl = ausgabe
+
+        if int(ausgabe) == 12:
+            logging.debug('Latest downloaded cover was a 12, rollover to next year.')
+            jahr = str(int(jahr) + 1)
+            ausgabe = str(0)
+            max_month_latest = 1
+        else:
+            if current_day > 15:
+                logging.debug('Later than 15th so try also a next month cover.')
+                max_month_latest = max_month_latest + 1
+
+        ausgabe = str(int(ausgabe) + 1)
+        continue_download = True
+
+        while continue_download:
+            logging.info(f"Trying now to download the latest cover for (Cover/Year) (curMonth/curYear)=>"
+                         f"({ausgabe}/{jahr}) ({current_month}/{current_year})")
+            logging.debug(f"maxMonth, maxYear=>({max_month_latest}, {max_year_latest})")
+
+            result = download_cover(int(jahr), int(ausgabe))
+            logging.debug(f"result [{result}]")
+
+            if result < 10:
+                logging.debug(f"Last success download [{ausgabe_lastdl}/{jahr_lastdl}]")
+                jahr_lastdl = jahr
+                ausgabe_lastdl = ausgabe
+                if result == 0 and user_data[0]['cover_page_print'].lower() == "yes":
+                    print_cover(f"{user_data[0]['downloadtargetcovers']}/{jahr}/GS{jahr}_{str(ausgabe).zfill(2)}_Inlay-Coverpack.pdf", user_data[0]['cover_page_number'])
+
+            ausgabe = str(int(ausgabe) + 1)
+            if int(ausgabe) == 13:
+                logging.debug('Roll over in loop to next year')
+                ausgabe = str(1)
+                jahr = str(int(jahr) + 1)
+                if int(jahr) > max_year_latest:
+                    logging.debug(f'Too far in future({jahr})')
+                    break
+
+            if int(str(max_year_latest) + str(max_month_latest).zfill(2)) >= int(str(jahr) + str(ausgabe).zfill(2)):
+                logging.debug('Loop fine - expecting still a next cover.')
+                continue
+            else:
+                logging.debug('Stop latest download loop - max reached.')
+                continue_download = False
+
+        logging.info(f"Last success download [{ausgabe_lastdl}/{jahr_lastdl}]")
+        user_data[0]['latestdownload_cover'][0]['year'] = jahr_lastdl
+        user_data[0]['latestdownload_cover'][0]['edition'] = ausgabe_lastdl
+
+        logging.info(f'Update JSON file ({json_config_file})')
+        with open(json_config_file, 'w') as outfile:
+            json.dump(user_data, outfile, indent=4, sort_keys=False)
+
     else:
         logging.error('Run Type: not supported')
         sys.exit(97)

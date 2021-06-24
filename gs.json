@@ -14,8 +14,15 @@
                 "edition": "3"
             }
         ],
+        "latestdownload_cover": [
+            {
+                "year": "2021",
+                "edition": "3"
+            }
+        ],
+        "cover_page_print": "Yes",
+        "cover_page_number": 1,
         "browser_display_on_latest": "no",
-        "skip_editions": [
-        ]
+        "skip_editions": []
     }
 ]
