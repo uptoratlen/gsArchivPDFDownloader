@@ -15,9 +15,11 @@
 - [Run](#run)
   - [commandline argument](#commandline-argument)
     - [--full](#--full)
+    - [--cover](#--cover)      
     - [--range](#--range)
     - [--year](#--year)
     - [--latest](#--latest)
+    - [--coverlatest](#--coverlatest)
 - [Remarks](#remarks)
 - [FAQ](#faq)
 
@@ -30,7 +32,7 @@ Even as I got (most) of the editions in paper, I wanted to get them all as pdf.
 That is where **gsArchivPDFDownloader** comes in. It will connect with your credentials (yes, you still need a subscription, this is automation not "(G)amestar (t)heft (a)utomation ...)
 open all editions from 1997/9 to 2021/3 and download them to a selectable folder.
 ```
-Info: Important change - since 0.5.6 a new gs_credential.json was created
+Info: Important change - since 0.5.6 a new gs_credential.json is used to seperate credentials from other settings
 ```
 
 ### Demo Video
@@ -47,6 +49,9 @@ To prevent a error the edition is listed in [gs.json](#edit-gsjson) in key "skip
   (12 March 2021) - the edition is downloadable as a ZIP,but not from blätterkatalog which uses the program  
   (11 May   2021) - hightower5 reported this as working -> see issue#10
   
+* The cover of 2021/08 misses some text
+This is caused by a faulty pdf, I'm no expert on PDFs, but it looks like a font is missing in the pdf.
+  
 ## Technologies
 The gsArchivPDFDownloader obviously was created in Python with Selenium and the geckodriver(firefox).
 geckodriver was not particular selected because of a certain feature needed, but because I use Firefox anyway.
@@ -60,16 +65,32 @@ First use (env)
 * The job ran successful with webpages at 6th March 2021.
 * Python 3.7.3 (also 3.9.2 also worked)
 * Selenium was version 3.141.0
+* Win32Printing was version 0.1.3
+* Ghostscript (py) was version 0.7
 * geckodriver 0.29.0 (cf6956a5ec8e 2021-01-14 10:31 +0200)
 * Firefox 86.0(64-bit)
+* Ghostscript was version 9.54.0
 * hosting OS was Windows 10 (20H2)
 ```
 
 ## Setup
 * Install obviously python (assuming default settings)
+  
+* Install ghostscript (Executable)
+```
+winget install ghostscript
+```
+If winget is not already part of your system, check this out (https://docs.microsoft.com/en-us/windows/package-manager/winget/)
+WInget is a lookalike apt-get, but of course you could install ghostscript as you like. Portable will only work in 
+case python is able to locate the dll in the system. 
+
 * install with pip selenium
 ```
 pip install selenium
+```
+* install with pip ghostscript & win32printing
+```
+pip install ghostscript win32printing
 ```
 * Get gsArchivPDFDownloader.py and gs.json from this repository  
 Use one of the two options  
@@ -114,6 +135,7 @@ This is a not working sample ! - Get the real one from code or release page.
     {
         "log_level": "INFO",
         "downloadtarget": "c:\\download\\Gamestar-archive",
+        "downloadtargetcovers": "c:\\download\\Gamestar-archive\\covers",
         "edition2d": "Yes",
         "downloadtimeout": 240,
         "abortlimit": 2,
@@ -122,15 +144,19 @@ This is a not working sample ! - Get the real one from code or release page.
         "latestdownload": [
             {
                 "year": "2021",
-                "edition": "3"
+                "edition": "8"
             }
         ],
-        "browser_display_on_latest": "no",
-        "skip_editions": [
+        "latestdownload_cover": [
             {
-                "2017": "10"
+                "year": "2021",
+                "edition": "8"
             }
-        ]
+        ],
+        "cover_page_print": "Yes",
+        "cover_page_number": 1,
+        "browser_display_on_latest": "no",
+        "skip_editions": []
     }
 ]
 ```
@@ -138,12 +164,15 @@ This is a not working sample ! - Get the real one from code or release page.
 |:---|:---:|:---|:---:|
 | log_level      | [debug/info/warning/error/critical]   | The log level just in case needed - info is default, debug is fallback | v0.5|
 | downloadtarget | string   | please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive" will look like "c:\\\\download\\\\Gamestar-archive". | v0.1|
+| downloadtargetcovers | string   | please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive\\covers" will look like "c:\\\\download\\\\Gamestar-archive\\\\covers". | v0.7|
 | edition2d | [Yes/No] | "No" will use the edition from the server like 1,2,3,4,5; "Yes" will create edition names like "01,02,03,04,05..." | v0.2|
 | downloadtimeout | int | Time in seconds the download wait for a download before trying to download the next edition. This is a max timer, in case the edition is completed before that time it will not wait until the max time. Currently only successful downloads will be moved to target | v0.1|
 | abortlimit | int | default 2; In case a "-year" run is selected and 'abortlimit' edition in sequence are not found the run will be aborted. A new success after a failed download will reset the counter.   | v0.5.6|
 | browser_display_on_latest | [Yes/No]  | In case the commandline option --latest or -l thi soption allow a hidden browser on value "no", "yes" will display the browser also on this commandline option  | v0.5|
 | latestdownload | list] | in case the commandline option --latest/-l is used this will be updated with the latest downloaded edition, so the next run (month) will start from that edition the copy; see ["--latest"](#--latest)  | v0.5|
-
+| latestdownload_cover | list] | in case the commandline option --coverlatest/-cl is used this will be updated with the latest downloaded cover, so the next run (month) will start from that edition the copy; see ["--coverlatest"](#--coverlatest)  | v0.7|
+| cover_page_print | [Yes/No]   | "Yes" will print the cover directly in case --coverlatest/-cl is used to default printer - with current default settings| v0.7|
+| cover_page_number | int   | The pdf contains multiple formats, 1 might by the DVD box layout, --coverlatest/-cl will print this page   | v0.7|
 
 
 ### Filenamepattern in gs.json
@@ -180,8 +209,12 @@ Download GameStar PDFs from webpage
 optional arguments:
   -h, --help            show this help message and exit
   -l, --latest          try to download always the newest (starting from
-                        2021-3)
-  -f, --full            a full download of all editions from 1997/09 to 5/2021
+                        xxxx-x)
+  -cl, --coverlatest    try to download always the newest cover (starting from
+                        xxxx-x)
+  -f, --full            a full download of all editions from 1997/09 to x/xxxx
+  -c, --cover           a full download of all covers from from 2000/01 to
+                        x/xxxx
   -y YEAR, --year YEAR  a single year in range [1997-2035]
   -r RANGE, --range RANGE
                         a range in fomrat yyyy:mm-yyyy:mm; example -r
@@ -217,6 +250,39 @@ C:
                               +2000  <-- all editions of that year (12)
                               +...         
 ```
+
+#### --cover
+To start a download job open a cmd and type
+```
+python gsArchivPDFDownloader.py -c 
+```
+```
+python gsArchivPDFDownloader.py --cover 
+```
+
+Now the job will start, it will check and create the "downloadtarget" folder.
+It will open a firefox/geckodriver browser and than tries in a loop to download all covers starting from 2000/01 to 
+the current year. Than it will save the file. After the download is complete (no *.part is seen anymore), the new file is moved to a sub folder of the year.
+In other words the structure of the sample will look like
+```
+
+C:
+  |
+  +--download
+            |
+            +--Gamestar-archive
+                              |
+                              +--covers
+                                      |
+                                      +2000  <-- all covers of that year
+                                      +2001  <-- all covers of that year 
+                                      +2002  <-- all covers of that year 
+                                      +2000  <-- all covers of that year 
+                                      +...         
+```
+It will not check for errors. In case a cover  is missing, it simply tries the next. Practically the first cover 
+found is 2015/12. Maybe the older covers are not there or in a different format. I kept the start year 2000 just for 
+no good reason.
 
 #### --range
 ```
@@ -260,6 +326,26 @@ add the absolute path to the python.exe in program field, add the "--latest" as 
 set the "start in folder" to the folder the gsArchivPDFDownloader.py is in.
 ```
 
+#### --coverlatest
+In case you want to repeat the download of a cover on a monthly base after you downloaded all (with the initial 
+function --cover), this is the option for you.
+```
+python gsArchivPDFDownloader.py --coverlatest
+```
+This run will read 'latestdownload_cover' from the json file and tries now to download the next cover, eg. the last 
+download was 2021/03 and we are currently at the 28th of April,  
+this will first try to download the cover of 04/2021, than it will also check as it is past the 15th of the 
+current month also to download the cover 05/2021.
+I guess that maybe around the third week of a month there is a potential release of the next edition.
+The "coverlatest" commandline also takes in credit of a year jump (\*crossing fingers\*) around December.
+Of course it makes maybe somehow sense to combine this with the json option "browser_display_on_latest" = "no".
+In this run type, the max cover number of a year is 12. So if ever a 13th cover will come up, I need a fix.
+```
+Hint: If you create the task, create it as:  
+Windows 10 , hidden, run without user logged in , do not store password  
+add the absolute path to the python.exe in program field, add the "--coverlatest" as argument and  
+set the "start in folder" to the folder the gsArchivPDFDownloader.py is in.
+```
 
 ## Remarks
 Since v0.1 some parts are changed. Mostly to new error or requested enhancements.
@@ -292,5 +378,10 @@ Not sure how many this script used, but as long as I will use it I will update t
 
 * One timer? In version 0.x ? You cheating liar....  
   I need to confess, I added some nice features after my initial use...for others...so it's ok?
+  
+* Printing does not work for me.
+  Well as the printing uses some transformations and additional packages, it may not work. Even I tested it on three 
+  system with different printers. There is a high chnace that it may not work for you. But maybe we could sort it 
+  out by some logging and debugging.
 
   
