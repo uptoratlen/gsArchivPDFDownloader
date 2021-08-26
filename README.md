@@ -34,8 +34,7 @@ open all editions from 1997/9 to 2021/3 and download them to a selectable folder
 ```
 Info: Important change - since 0.5.6 a new gs_credential.json is used to seperate credentials from other settings
 ```
-Here is the link to the GS forum: https://www.gamestar.
-de/xenforo/threads/schon-mal-alle-hefte-aus-dem-plus-archiv-geladen-wenn-nein-dann.470604/
+Here is the link to the GS forum: https://www.gamestar.de/xenforo/threads/schon-mal-alle-hefte-aus-dem-plus-archiv-geladen-wenn-nein-dann.470604/
 
 ### Demo Video
 Check this small demo Video: 
