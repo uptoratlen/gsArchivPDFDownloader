@@ -34,6 +34,8 @@ open all editions from 1997/9 to 2021/3 and download them to a selectable folder
 ```
 Info: Important change - since 0.5.6 a new gs_credential.json is used to seperate credentials from other settings
 ```
+Here is the link to the GS forum: https://www.gamestar.
+de/xenforo/threads/schon-mal-alle-hefte-aus-dem-plus-archiv-geladen-wenn-nein-dann.470604/
 
 ### Demo Video
 Check this small demo Video: 
@@ -381,7 +383,7 @@ Not sure how many this script used, but as long as I will use it I will update t
   
 * Printing does not work for me.
   Well as the printing uses some transformations and additional packages, it may not work. Even I tested it on three 
-  system with different printers. There is a high chnace that it may not work for you. But maybe we could sort it 
+  system with different printers. There is a high chance that it may not work for you. But maybe we could sort it 
   out by some logging and debugging.
 
   
