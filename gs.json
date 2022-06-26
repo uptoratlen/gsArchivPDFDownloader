@@ -8,15 +8,16 @@
         "abortlimit": 2,
         "filenamepattern_intarget": "GameStar Nr. <ausgabe>_<jahr>.pdf",
         "filenamepattern_fromserver": "GameStar Nr. <ausgabe>_<jahr>.pdf",
+        "filenamepattern_fromserverwhiledl": "GameStar Nr.*<ausgabe>_<jahr>.pdf",
         "latestdownload": [
             {
-                "year": "2021",
+                "year": "1997",
                 "edition": "8"
             }
         ],
         "latestdownload_cover": [
             {
-                "year": "2021",
+                "year": "1997",
                 "edition": "8"
             }
         ],

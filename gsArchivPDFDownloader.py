@@ -1,4 +1,4 @@
-__version_info__ = ('0', '7', '0')
+__version_info__ = ('0', '8', '0')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -51,12 +51,12 @@ def _open_gs_and_login(_url, _user, _password, _options, _profile):
     _driver.get(_url)
     logging.info(f"Browser now started with URL:{_url} - "
                  f"try now to log in with user/password [xxx/***]")
-    _wait.until(ec.visibility_of_element_located((By.LINK_TEXT, 'einloggen')))
-    _driver.find_element_by_link_text('einloggen').click()
-    _wait.until(ec.visibility_of_element_located((By.ID, 'loginbox-login-username')))
-    _driver.find_element_by_id('loginbox-login-username').send_keys(_user)
-    _driver.find_element_by_id('loginbox-login-password').send_keys(_password)
-    _driver.find_element_by_css_selector('button.btn:nth-child(9)').click()
+    _wait.until(ec.visibility_of_element_located((By.CSS_SELECTOR,'button.btn:nth-child(7)')))
+    sleep(2)
+    _driver.find_element_by_id('page-login-inp-username').send_keys(_user)
+    sleep(2)
+    _driver.find_element_by_id('page-login-inp-password').send_keys(_password)
+    _driver.find_element_by_css_selector('button.btn:nth-child(7)').click()
     return _driver
 
 
@@ -93,11 +93,13 @@ def json_config_check(_json_config, _key_list):
     return True
 
 
-def filename_modification(filestring_downloaded, filestring_target, edition_month, edition_jahr, edition2d="no"):
+def filename_modification(filestring_downloaded, filestring_whiledownloaded, filestring_target, edition_month,
+                          edition_jahr, edition2d="no"):
     """Filenames must be altered according to the server/download and local/target definition in json file
 
     Args:
         filestring_downloaded (str): The filename string from json file for the download name
+        filestring_whiledownloaded (str): The filename string from json file for the download name while downloading
         filestring_target (str): The filename string from json file for the target/local name
         edition_month (str):  The edition number aka month as string
         edition_jahr (str): The edition year aka jahr as string
@@ -106,11 +108,13 @@ def filename_modification(filestring_downloaded, filestring_target, edition_mont
     Returns:
         (tuple): tuple containing:
              filestring_downloaded (str): the final name of the file used in the download url
+             filestring_whiledownloaded (str): the final name of the file used in the download url while downloading
              filestring_target (str): the final name of the file used in the target folder
     Raises:
         TypeError: in case input is not str and exists
     """
     logging.debug(f'Filename after Download on disk :[{filestring_downloaded}]')
+    logging.debug(f'Filename while Download on disk :[{filestring_whiledownloaded}]')
     logging.debug(f'Filename for Target(modified)   :[{filestring_target}]')
     try:
         if edition2d.lower() == 'yes':
@@ -122,10 +126,12 @@ def filename_modification(filestring_downloaded, filestring_target, edition_mont
 
         for filenamerepl in (("<ausgabe>", edition_month.lstrip('0')), ("<jahr>", edition_jahr)):
             filestring_downloaded = filestring_downloaded.replace(*filenamerepl)
+            filestring_whiledownloaded = filestring_whiledownloaded.replace(*filenamerepl)
 
         logging.info(f'Filename after Download on disk :[{filestring_downloaded}]')
+        logging.info(f'Filename while Download on disk :[{filestring_whiledownloaded}]')
         logging.info(f'Filename for Target(modified)   :[{filestring_target}]')
-        return filestring_downloaded, filestring_target
+        return filestring_downloaded, filestring_whiledownloaded, filestring_target
     except TypeError as _e:
         logging.exception(f'TypeError Exception Raised - str expected int found -{_e}')
         sys.exit(99)
@@ -156,6 +162,7 @@ def download_range(_range_start_year, _range_start_month, _range_end_year, _rang
         logging.info(f"Trying now to download  (Edition/Year) => ({_ausgabe}/{_jahr})")
         _result = download_edition(int(_jahr), int(_ausgabe),
                                    user_data[0]['filenamepattern_fromserver'],
+                                   user_data[0]['filenamepattern_fromserverwhiledl'],
                                    user_data[0]['filenamepattern_intarget'], user_data[0]['skip_editions'])
         if _result < 10:
             _abort_flag = 0
@@ -188,6 +195,7 @@ def download_range(_range_start_year, _range_start_month, _range_end_year, _rang
                                 f' try same run a second time.')
                 logging.warning(f'{error_list}')
             _continue_download = False
+
 
 def download_cover(_jahr, _monat):
     """The cover download function
@@ -246,13 +254,16 @@ def download_cover(_jahr, _monat):
                                   f"{filename_cover_intarget_sub}.pdf")
     return 0
 
-def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_target, _skip_editions):
+
+def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_whiledownload,
+                     _filestring_target, _skip_editions):
     """The main download function
 
     Args:
         jahrdl (int): year of requested downloads
         ausgabedl (int): month/edition of requested downloads
         _filestring_download (str): The filename string from json file for the download name
+        _filestring_whiledownload (str): The filename string from json file for the download name while downloading
         _filestring_target (str): The filename string from json file for the target/local name
         _skip_editions (dict): dict of all special editions that should be skipped as they are
          expected to cause a issue (server side error)
@@ -270,8 +281,9 @@ def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_target
     """
     wait_de = WebDriverWait(driver, 10)
 
-    _filenamepattern_download, _filenamepattern_local = filename_modification(
-        _filestring_download, _filestring_target, str(ausgabedl), str(jahrdl), user_data[0]['edition2d'])
+    _filenamepattern_download, _filenamepattern_whiledownload, _filenamepattern_local = filename_modification(
+        _filestring_download, _filestring_whiledownload, _filestring_target, str(ausgabedl),
+        str(jahrdl), user_data[0]['edition2d'])
     skip_download = False
 
     try:
@@ -306,7 +318,12 @@ def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_target
                      f'- URL:https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahrdl}&bkm={ausgabedl}')
         # open url of blätterkatalog
         driver.get(f'https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahrdl}&bkm={ausgabedl}')
-        sleep(8)
+        sleep(4)
+        try:
+            driver.find_element_by_css_selector('#cbutton1').click()
+        except:
+            logging.info('Cookies already satisfied')
+        sleep(3)
 
         filesdl = glob.glob(f"{user_data[0]['downloadtarget']}/*.pdf*")
         for fndl in filesdl:
@@ -331,7 +348,7 @@ def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_target
         # click on the download / save button
         driver.find_element_by_xpath("//a[contains(@href, 'complete.pdf')]").click()
         sleep(1)
-        resultdl1 = wait_for_download(f"{user_data[0]['downloadtarget']}/{_filenamepattern_download}",
+        resultdl1 = wait_for_download(f"{user_data[0]['downloadtarget']}/{_filenamepattern_whiledownload}",
                                       timeout=user_data[0]['downloadtimeout'])
         if resultdl1 is True:
             dl_state = 0
@@ -366,16 +383,17 @@ def wait_for_download(filedownloadfullpath, timeout=30):
          False for Partial donwloaded file still seen after timeout.
 
     """
-    logging.debug(f'Download timeout is:[{timeout}]')
+    logging.debug(f'Download timeout is:[{timeout}] - looking for [{filedownloadfullpath}.part]')
     time_out = time() + 2
-    while not os.path.exists(f'{filedownloadfullpath}.part') and time() < time_out:
+
+    while not glob.glob(f'{filedownloadfullpath}.part') and time() < time_out:
         logging.debug(f'{filedownloadfullpath}.part not yet seen- waiting for first download')
         sleep(2)
     time_out = time() + timeout
-    while os.path.exists(f'{filedownloadfullpath}.part') and time() < time_out:
+    while glob.glob(f'{filedownloadfullpath}.part') and time() < time_out:
         logging.debug(f'{filedownloadfullpath}.part Seen- waiting')
         sleep(1.5)
-    if os.path.exists(f'{filedownloadfullpath}.part'):
+    if glob.glob(f'{filedownloadfullpath}.part'):
         logging.warning('Download still in progress - may need recheck - aborting wait to continue'
                         ' - may complete in background')
         return False
@@ -417,6 +435,7 @@ def move_downloaded(_targetfolder, _year, _fn_downloaded, _fn_target, _timeout=3
         logging.warning(f'Move not performed as file [{_targetfolder}/{_fn_downloaded}] is not seen.')
         return False
 
+
 def print_cover(cover_file, page_to_print):
     """Extracts a given page number from the inlay file and than print the file to the default printer
     the extract was added as direct print was not working in the expected way
@@ -429,7 +448,7 @@ def print_cover(cover_file, page_to_print):
         none
     """
     temp1 = tempfile.mktemp('.eps')
-    page_seite=str(page_to_print)
+    page_seite = str(page_to_print)
     args_extract = [
         "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOPROMPT",
         "-q",
@@ -454,12 +473,13 @@ def print_cover(cover_file, page_to_print):
     ghostscript.Ghostscript(*args_printing)
     os.remove(temp1)
 
+
 if __name__ == '__main__':
 
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     key_list_gsjson = ['log_level', 'downloadtarget', 'edition2d', 'downloadtimeout', 'abortlimit',
-                       'filenamepattern_intarget', 'filenamepattern_fromserver', 'latestdownload',
-                       'browser_display_on_latest', 'skip_editions']
+                       'filenamepattern_intarget', 'filenamepattern_fromserver', 'filenamepattern_fromserver',
+                       'latestdownload', 'browser_display_on_latest', 'skip_editions']
 
     # read config from json file
     json_config_file = 'gs.json'
@@ -568,18 +588,21 @@ if __name__ == '__main__':
 
     logging.info(f"Download location:{user_data[0]['downloadtarget']}")
     logging.info(f"filenamepattern_fromserver:{user_data[0]['filenamepattern_fromserver']}")
+    logging.info(f"filenamepattern_fromserverwhiledl:{user_data[0]['filenamepattern_fromserverwhiledl']}")
     logging.info(f"filenamepattern_intarget  :{user_data[0]['filenamepattern_intarget']}")
 
+    url_login = 'https://www.gamestar.de/login/'
     url = 'https://www.gamestar.de/plus/'
 
     if args.year:
         logging.info('Run Type: Year')
-        driver = _open_gs_and_login(url, user_credential[0]['user'], user_credential[0]['password'],
+        driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
                                     optionsFF, profileFF)
         year = args.year
         abort_flag = 0
         for edition in range(1, 14):
             result = download_edition(int(year), edition, user_data[0]['filenamepattern_fromserver'],
+                                      user_data[0]['filenamepattern_fromserverwhiledl'],
                                       user_data[0]['filenamepattern_intarget'], user_data[0]['skip_editions'])
             if result < 10:
                 abort_flag = 0
@@ -617,7 +640,7 @@ if __name__ == '__main__':
 
         ausgabe = str(int(ausgabe)+1)
         continue_download = True
-        driver = _open_gs_and_login(url, user_credential[0]['user'], user_credential[0]['password'],
+        driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
                                     optionsFF, profileFF)
         while continue_download:
             logging.info(f"Trying now to download the latest version for (Editions/Year) (curMonth/curYear)=>"
@@ -626,6 +649,7 @@ if __name__ == '__main__':
 
             result = download_edition(int(jahr), int(ausgabe),
                                       user_data[0]['filenamepattern_fromserver'],
+                                      user_data[0]['filenamepattern_fromserverwhiledl'],
                                       user_data[0]['filenamepattern_intarget'], user_data[0]['skip_editions'])
             logging.debug(f"result [{result}]")
             if result < 10:
@@ -664,7 +688,7 @@ if __name__ == '__main__':
         range_end_month = str(datetime.now().month)
 
         logging.debug(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
-        driver = _open_gs_and_login(url, user_credential[0]['user'], user_credential[0]['password'],
+        driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
                                     optionsFF, profileFF)
         download_range(range_start_year, range_start_month, range_end_year, range_end_month)
 
@@ -685,7 +709,7 @@ if __name__ == '__main__':
         if int(range_start_year + range_start_month.zfill(2)) > int(range_end_year + range_end_month.zfill(2)):
             logging.error('Range end is older than start.')
             sys.exit(95)
-        driver = _open_gs_and_login(url, user_credential[0]['user'], user_credential[0]['password'],
+        driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
                                     optionsFF, profileFF)
         download_range(range_start_year, range_start_month, range_end_year, range_end_month)
     elif args.cover:
@@ -759,7 +783,8 @@ if __name__ == '__main__':
                 jahr_lastdl = jahr
                 ausgabe_lastdl = ausgabe
                 if result == 0 and user_data[0]['cover_page_print'].lower() == "yes":
-                    print_cover(f"{user_data[0]['downloadtargetcovers']}/{jahr}/GS{jahr}_{str(ausgabe).zfill(2)}_Inlay-Coverpack.pdf", user_data[0]['cover_page_number'])
+                    print_cover(f"{user_data[0]['downloadtargetcovers']}/{jahr}/GS{jahr}_{str(ausgabe).zfill(2)}_Inlay-Coverpack.pdf",
+                                user_data[0]['cover_page_number'])
 
             ausgabe = str(int(ausgabe) + 1)
             if int(ausgabe) == 13:

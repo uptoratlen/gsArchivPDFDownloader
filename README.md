@@ -142,6 +142,7 @@ This is a not working sample ! - Get the real one from code or release page.
         "abortlimit": 2,
         "filenamepattern_intarget": "GameStar Nr. <ausgabe>_<jahr>.pdf",
         "filenamepattern_fromserver": "GameStar Nr. <ausgabe>_<jahr>.pdf",
+        "filenamepattern_fromserverwhiledl": "GameStar Nr.*<ausgabe>_<jahr>.pdf",        
         "latestdownload": [
             {
                 "year": "2021",
@@ -177,10 +178,11 @@ This is a not working sample ! - Get the real one from code or release page.
 
 
 ### Filenamepattern in gs.json
-| Name          | value allowed        | Remark|
-|:---|:---:|:---|
-| filenamepattern_intarget      | string | The downloaded file will be moved with that name to the downloadtarget folder |
-| filenamepattern_fromserver      | string   | That is the file we get after we click on the "alle" button in "blätterkatalog" |  
+| Name          | value allowed        | Remark                                                                                                       | Introduced |
+|:---|:---:|:-------------------------------------------------------------------------------------------------------------|:----------:|
+| filenamepattern_intarget      | string | The downloaded file will be moved with that name to the downloadtarget folder                                |    v0.1    |
+| filenamepattern_fromserver      | string   | That is the file we get after we click on the "alle" button in "blätterkatalog"                              |    v0.1    |  
+| filenamepattern_fromserverwhiledl      | string   | That is the file we get while thwe file is downloaded |   v0.8   |  
 
 Basic idea: The filename pattern is read from file and than the strings "\<ausgabe\>" and "\<jahr\>" are replaced by the current proceeded values.
 
@@ -192,6 +194,9 @@ I found out during the creation of v0.2 that the server changed the naming. They
 To overcome this small but maybe annoying thing (maybe "they" did not like my downloader, or it was Shodan, GLaDOS...), I added also here a way to get the right URL.
 As mentioned in the start and end, if "they" change fundamental things, upsi....it will not work anymore.
 With that we could try a small fix.
+
+In April 2022 a new file download name is introduced (or seen). While downloading a differnet name is seen. Not sure 
+why or what caused this, but at least the  <filenamepattern_fromserverwhiledl> is a option to get arround this.
 
 ### skip_editions in gs.json
 | Name          | value allowed        | Remark|
@@ -355,6 +360,7 @@ Not sure how many this script used, but as long as I will use it I will update t
 ## FAQ
 * Will it always work?  
   No, it depends on the webpage. In case the fields are renamed it will not work anymore. Taking in account that the basic function will stay the same, editing the names should not be a big issue.
+  See change caused  by April 2022.
 
 * It not even download a single bit.  
   Did you edit the gs.json? Or It is broken already, sorry....drop me a note and I will a) fix or b)remove this :-)
