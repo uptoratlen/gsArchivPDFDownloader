@@ -1,4 +1,4 @@
-__version_info__ = ('0', '8', '0')
+__version_info__ = ('0', '8', '1')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -14,7 +14,6 @@ import tempfile
 
 import ghostscript
 import win32print
-
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -461,15 +460,18 @@ def print_cover(cover_file, page_to_print):
     ]
     # for printing on default printer
     args_printing = [
-        "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOPROMPT",
+        "-dPrinted", "-dBATCH", "-dNOPAUSE", "-dSAFER", "-dNOPROMPT", "-dQueryUser=3",
         "-q",
+        "-dNumCopies=1",
         "-dEPSFitPage",
         "-sDEVICE=mswinpr2",
         f'-sOutputFile="%printer%{win32print.GetDefaultPrinter()}"',
         "-f",
         temp1
     ]
+    logging.info(f"Create temp PDF file [{temp1}]")
     ghostscript.Ghostscript(*args_extract)
+    logging.info(f"Print to Printer:{win32print.GetDefaultPrinter()}")
     ghostscript.Ghostscript(*args_printing)
     os.remove(temp1)
 
