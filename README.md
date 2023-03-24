@@ -89,9 +89,9 @@ case python is able to locate the dll in the system.
 ```
 pip install selenium
 ```
-* install with pip ghostscript & win32printing
+* install with pip ghostscript & pywin32
 ```
-pip install ghostscript win32printing
+pip install ghostscript pywin32
 ```
 * Get gsArchivPDFDownloader.py and gs.json from this repository  
 Use one of the two options  

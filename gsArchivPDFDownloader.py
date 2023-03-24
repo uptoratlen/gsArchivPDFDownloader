@@ -1,4 +1,4 @@
-__version_info__ = ('0', '8', '1')
+__version_info__ = ('0', '8', '2')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -13,7 +13,7 @@ from time import sleep, time
 import tempfile
 
 import ghostscript
-import win32print
+from win32 import win32print
 
 import logging
 from logging.handlers import RotatingFileHandler
@@ -235,7 +235,9 @@ def download_cover(_jahr, _monat):
         logging.error(e)
         pass
     logging.info("Check for newest file...")
-    list_of_files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*")
+    file_type = r'\*pdf'
+    list_of_files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*" + file_type)
+
     newest_file = max(list_of_files, key=os.path.getctime)
     logging.debug(f"Newest file (assuming downloaded):{newest_file}")
     if ".pdf" not in newest_file:
