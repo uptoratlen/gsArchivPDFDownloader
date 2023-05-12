@@ -235,9 +235,7 @@ def download_cover(_jahr, _monat):
         logging.error(e)
         pass
     logging.info("Check for newest file...")
-    file_type = r'\*pdf'
-    list_of_files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*" + file_type)
-
+    list_of_files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*pdf", recursive=False)
     newest_file = max(list_of_files, key=os.path.getctime)
     logging.debug(f"Newest file (assuming downloaded):{newest_file}")
     if ".pdf" not in newest_file:
