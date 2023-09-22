@@ -50,12 +50,12 @@ def _open_gs_and_login(_url, _user, _password, _options, _profile):
     _driver.get(_url)
     logging.info(f"Browser now started with URL:{_url} - "
                  f"try now to log in with user/password [xxx/***]")
-    _wait.until(ec.visibility_of_element_located((By.CSS_SELECTOR,'button.btn:nth-child(7)')))
+    _wait.until(ec.visibility_of_element_located((By.CSS_SELECTOR,'button.btn:nth-child(8)')))
     sleep(2)
     _driver.find_element_by_id('page-login-inp-username').send_keys(_user)
     sleep(2)
     _driver.find_element_by_id('page-login-inp-password').send_keys(_password)
-    _driver.find_element_by_css_selector('button.btn:nth-child(7)').click()
+    _driver.find_element_by_css_selector('button.btn:nth-child(8)').click()
     return _driver
 
 
