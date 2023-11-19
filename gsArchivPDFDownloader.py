@@ -18,6 +18,8 @@ from win32 import win32print
 import logging
 from logging.handlers import RotatingFileHandler
 
+#from get_gecko_driver import GetGeckoDriver
+
 from selenium import webdriver
 from selenium.webdriver import FirefoxProfile
 from selenium.webdriver.firefox.options import Options as Options_FF
@@ -26,6 +28,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException
+
 
 
 def _open_gs_and_login(_url, _user, _password, _options, _profile):
@@ -477,6 +480,8 @@ def print_cover(cover_file, page_to_print):
 
 
 if __name__ == '__main__':
+    #get_driver = GetGeckoDriver()
+    #get_driver.install()
 
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     key_list_gsjson = ['log_level', 'downloadtarget', 'edition2d', 'downloadtimeout', 'abortlimit',
