@@ -14,7 +14,7 @@ class MyTestCase(unittest.TestCase):
         self.test_dir = tempfile.mkdtemp()
         print(self.test_dir)
         self.testfilename = 'Gamestar_Dummy.PDF'
-        with open(path.join(self.test_dir, self.testfilename+'.part'), 'w') as f:
+        with open(path.join(self.test_dir, self.testfilename+'.crdownload'), 'w') as f:
             f.write('Only a dummy PDF aka ascii file')
         with open(path.join(self.test_dir, self.testfilename), 'w') as f:
             f.write('Only a dummy PDF aka ascii file')
@@ -74,7 +74,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_wait_for_download_t2(self):
         # check if partial is not seen anymore
-        os.remove(path.join(self.test_dir, self.testfilename+'.part'))
+        os.remove(path.join(self.test_dir, self.testfilename+'.crdownload'))
         filedownloadfullpath = str(path.join(self.test_dir, self.testfilename))
         self.assertEqual(True, wait_for_download(filedownloadfullpath, timeout=3))
 
