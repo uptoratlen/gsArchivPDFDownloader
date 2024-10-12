@@ -84,12 +84,12 @@ If you install it by winget, open a new prompt, otherwise the env vars may not y
 
 * Update pip itself
 ```
-pip install --upgrade pip
+python.exe -m pip install --upgrade pip
 ```
 
 * install with pip libs
 ```
-pip install selenium==4.25.0 pypdf2==3.0.1 pywin32==307 requests=2.32.3
+pip install selenium==4.25.0 pypdf2==3.0.1 pywin32==307 requests==2.32.3
 ```
 * Get gsArchivPDFDownloader.py and gs.json from this repository  
 Use one of the two options  
