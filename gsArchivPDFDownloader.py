@@ -7,16 +7,18 @@ import re
 import shutil
 from datetime import datetime
 import json
-import os
 import sys
 from time import sleep, time
+import requests
+import zipfile
+import os
+import io
 
 import logging
 from logging.handlers import RotatingFileHandler
 
 import tempfile
 import win32api
-import win32print
 from PyPDF2 import PdfReader, PdfWriter
 
 from selenium import webdriver
@@ -58,10 +60,34 @@ def _open_gs_and_login(_url, _user, _password, _options, _service):
     sleep(2)
     _driver.find_element(By.ID, 'page-login-inp-password').send_keys(_password)
     _driver.find_element(By.CSS_SELECTOR,'#PageLogin > button').click()
-    # a spam protect exists wait for
-    # PageLogin > p
     return _driver
 
+def download_chromedriver(version='129.0.6668.100', extract_to='.'):
+    # Determine the download URL for the specified version
+    download_url = f'https://storage.googleapis.com/chrome-for-testing-public/{version}/win64/chromedriver-win64.zip'
+
+    # Download the ChromeDriver zip file
+    response = requests.get(download_url)
+    response.raise_for_status()  # Check for request errors
+
+    # Extract the zip file to the specified folder
+    with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
+        zip_ref.extractall(extract_to)
+    logging.info(f'ChromeDriver {version} downloaded and extracted to {extract_to}')
+
+def download_chrome4testing(version='129.0.6668.100', extract_to='.'):
+    # Determine the download URL for the specified version
+    download_url = f'https://storage.googleapis.com/chrome-for-testing-public/{version}/win64/chrome-win64.zip'
+
+    # Download the ChromeDriver zip file
+    response = requests.get(download_url)
+    response.raise_for_status()  # Check for request errors
+
+    # Extract the zip file to the specified folder
+    with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
+        zip_ref.extractall(extract_to)
+
+    logging.info(f'ChromeDriver {version} downloaded and extracted to {extract_to}')
 
 def _hlp_display_type(varx):
     """
@@ -488,16 +514,21 @@ def print_cover(cover_file, page_to_print):
     Returns:
         none
     """
-    input_pdf = r"C:\temp\Gamestar-archive\covers\2024\GS2024_08_Inlay-Coverpack.pdf"
-    page_number = 0  # Seitennummern beginnen bei 0
+    input_pdf = cover_file
+    page_number = page_to_print - 1  # Seitennummern beginnen bei 0
+    if page_number < 0:
+        page_number = 0
+    logging.info(f'Print PDF [{input_pdf}] Page:{page_number}]')
     output_pdf = tempfile.mktemp('.pdf')
     extract_page(input_pdf, page_number, output_pdf)
 
-    # Get the default printer name
-    default_printer = win32print.GetDefaultPrinter()
-
+    logging.debug(f'Actualy print the extract pdf [{output_pdf}].')
     # Print the PDF file
-    win32api.ShellExecute(0, "print", output_pdf, None, None, 0)
+    try:
+        win32api.ShellExecute(0, "print", output_pdf, None, None, 0)
+    except Exception as error:
+        logging.error("Printer is not working")
+        pass
     # os.remove(output_pdf)
 
 
@@ -623,6 +654,24 @@ if __name__ == '__main__':
     if not os.path.exists(f"{user_data[0]['downloadtarget']}"):
         logging.info(f"Create folder [{user_data[0]['downloadtarget']}]")
         os.makedirs(f"{user_data[0]['downloadtarget']}")
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    binarychrome = "chrome-win64/chrome.exe"
+    binarychromedriver = "chromedriver-win64/chromedriver.exe"
+
+    # Check if the binarychrome exists
+    if os.path.isfile(binarychrome):
+        logging.info(f'Chrome4Test {binarychrome} exists.')
+    else:
+        logging.warning(f'Chrome4Test {binarychrome} does not exist.')
+        download_chrome4testing(version='129.0.6668.100', extract_to=script_dir)
+
+    if os.path.isfile(binarychromedriver):
+        logging.info(f'ChromeDriver {binarychromedriver} exists.')
+    else:
+        logging.warning(f'ChromeDriver {binarychromedriver} does not exist.')
+        download_chromedriver(version='129.0.6668.100', extract_to=script_dir)
 
     chrome_driver_path = "chromedriver-win64/chromedriver.exe"
     chrome_service = Service(executable_path=chrome_driver_path)
