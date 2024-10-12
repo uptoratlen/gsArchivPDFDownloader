@@ -54,44 +54,42 @@ To prevent a error the edition is listed in [gs.json](#edit-gsjson) in key "skip
 This is caused by a faulty pdf, I'm no expert on PDFs, but it looks like a font is missing in the pdf.
   
 ## Technologies
-The gsArchivPDFDownloader obviously was created in Python with Selenium and the geckodriver(firefox).
-geckodriver was not particular selected because of a certain feature needed, but because I use Firefox anyway.
+The gsArchivPDFDownloader obviously was created in Python with Selenium and Chrome4Testing and Chromedriver.
+[Chromedriver](https://developer.chrome.com/docs/chromedriver/downloads?hl=de)
+Up to 0.9.0 Firefox and Gecko was used.
 
 For users with less experience, basically what it does:
-Python opens a Firefox browser with a new profile (so your real one does not get altered) by the webdriver geckodriver (GeckoDriver is the link between Selenium and the Firefox browser), and than it simulates browser actions like a user does. Selenium is mostly used to automate tests of web applications.
+Python opens a chrome for testing instance (so your system browser does not get used) by the webdriver chromedriver (chromedriver is the link between Selenium and the chrome for testing browser), and than it simulates browser actions like a user does. Selenium is widly used to automate tests of web applications.
 
 As I expect that the webpage may be altered by some time, I guess later the automation will fail. The program is to some extent configurable for this case. 
 First use (env)
 ```
-* The job ran successful with webpages at 6th March 2021.
-* Python 3.7.3 (also 3.9.2 also worked)
-* Selenium was version 3.141.0
-* Win32Printing was version 0.1.3
-* Ghostscript (py) was version 0.7
-* geckodriver 0.29.0 (cf6956a5ec8e 2021-01-14 10:31 +0200)
-* Firefox 86.0(64-bit)
-* Ghostscript was version 9.54.0
-* hosting OS was Windows 10 (20H2)
+* The job ran successful with webpages at 12. October 2024.
+* Python 3.10 
+* Selenium was version 4.25.0
+* requests 2.32.3
+* pypdf2 3.0.1
+* pywin32 307
+* Chromedriver 129.0.6668.100
+* Chrome for testing 129.0.6668.100
+* hosting OS was Windows 11 (23H2)
 ```
 
 ## Setup
 * Install obviously python (assuming default settings)
-  
-* Install ghostscript (Executable)
 ```
-winget install ghostscript
+winget install python.python.3.10
 ```
-If winget is not already part of your system, check this out (https://docs.microsoft.com/en-us/windows/package-manager/winget/)
-WInget is a lookalike apt-get, but of course you could install ghostscript as you like. Portable will only work in 
-case python is able to locate the dll in the system. 
+If you install it by winget, open a new prompt, otherwise the env vars may not yet exist in the same shell.
 
-* install with pip selenium
+* Update pip itself
 ```
-pip install selenium
+pip install --upgrade pip
 ```
-* install with pip ghostscript & pywin32
+
+* install with pip libs
 ```
-pip install ghostscript pywin32
+pip install selenium==4.25.0 pypdf2==3.0.1 pywin32==307 requests=2.32.3
 ```
 * Get gsArchivPDFDownloader.py and gs.json from this repository  
 Use one of the two options  
@@ -103,13 +101,8 @@ Extract the Content to some writeable folder. Eg. \gsDownloader\gsArchivePDFDown
 ```
 The difference is that main, may contain newer und not so tested code.
 
-* Get geckodriver(.exe) as zip from 
-https://github.com/mozilla/geckodriver/releases, extract the geckodriver.exe
-and place it in the same folder as the gsArchivPDFDownloader.py
-  ```
-  Hint: The "pip install geckodriver" will install the driver also, but may not work, as I expect the driver in the 
-  same folder as the .py file
-  ```
+* Browser and Chromedriver?
+  On the first run (not help or version), the script will download the browser and the driver from google
 
 ## Edit gs_credential.json
 This is a not working sample ! - Get the real one from code or release page.
@@ -354,7 +347,7 @@ set the "start in folder" to the folder the gsArchivPDFDownloader.py is in.
 ```
 
 ## Remarks
-Since v0.1 some parts are changed. Mostly to new error or requested enhancements.
+Since v0.1/v.0.8.0 some parts are changed. Mostly to new error or requested enhancements.
 Not sure how many this script used, but as long as I will use it I will update the program with error fixes and enhancements.
 
 ## FAQ
@@ -364,21 +357,19 @@ Not sure how many this script used, but as long as I will use it I will update t
 
 * It not even download a single bit.  
   Did you edit the gs.json? Or It is broken already, sorry....drop me a note and I will a) fix or b)remove this :-)
-  Send me the logfile via github (of course the credentials are blurred in the file)
+  Send me the logfile via GitHub (of course the credentials are blurred in the file)
 
 * It will only download a fraction of the edition like a sample.  
   You may not enter in gs.json the right credentials
-
-* After a Job, somtimes file remain in the top download folder?
-  This should not happen. Will be adressed in of of the next versions
 
 * Hell, why you use simple sleeps?  
   ...one time effort...lazy?...eh...I guess you are right, but it worked for me.....sorry. And I tried some limited conditional waits...
 
 * After some successful downloads the job stopped, what is this?  
   I assume this is caused by a timeout, which is not caught. Just restart the job, it will start from the beginning, 
-  but skips all already downloaded pdf.  thelog may report these editions and you should try a rerun withthte same 
+  but skips all already downloaded pdf.  the log may report these editions and you should try a rerun with the same 
   command. This may overcome the issue by it self.
+  And since 2024 GS added a spam protection on the login - so do not over extend the script.
 
 * You mixed German and English in the logging?  
   Yes, as I said it was more a one timer. In case I got some time I may convert all to one language.
@@ -387,8 +378,8 @@ Not sure how many this script used, but as long as I will use it I will update t
   I need to confess, I added some nice features after my initial use...for others...so it's ok?
   
 * Printing does not work for me.
-  Well as the printing uses some transformations and additional packages, it may not work. Even I tested it on three 
-  system with different printers. There is a high chance that it may not work for you. But maybe we could sort it 
-  out by some logging and debugging.
+  Since 0.9 it is pretty straight forward. Before it was a mess. On the other hand rage against the printer?
+
+
 
   
