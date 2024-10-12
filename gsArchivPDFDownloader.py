@@ -1,4 +1,4 @@
-__version_info__ = ('0', '8', '2')
+__version_info__ = ('0', '9', '0')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -10,55 +10,56 @@ import json
 import os
 import sys
 from time import sleep, time
-import tempfile
-
-import ghostscript
-from win32 import win32print
 
 import logging
 from logging.handlers import RotatingFileHandler
 
-#from get_gecko_driver import GetGeckoDriver
+import tempfile
+import win32api
+import win32print
+from PyPDF2 import PdfReader, PdfWriter
 
 from selenium import webdriver
-from selenium.webdriver import FirefoxProfile
-from selenium.webdriver.firefox.options import Options as Options_FF
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException
 
-
-
-def _open_gs_and_login(_url, _user, _password, _options, _profile):
-    """Returns a webdriver :class:'selenium.webdriver.firefox.webdriver.WebDriver' object
-    Will open a browser with options and profile given,
+def _open_gs_and_login(_url, _user, _password, _options, _service):
+    """Returns a webdriver :class:'webdriver.Chrome(options=chrome_options, service=service_options)' object
+    Will open a browser with options given,
     login to page with user and password
 
     Args:
         _url (str): URL of startpage to login
         _user (str): Username from credentials
         _password (str): Password from credentials
-        _options (class): Firefox options
-        _profile (class): Firefox profile
+        _options (class): Chrome options
+        _service (class): Chrome Service
 
     Returns:
         class: webdriver
 
     """
     # open browser and login
-    _driver = webdriver.Firefox(options=_options, firefox_profile=_profile)
+    _driver = webdriver.Chrome(options=_options, service=_service)
+
     _wait = WebDriverWait(_driver, 20)
     _driver.get(_url)
     logging.info(f"Browser now started with URL:{_url} - "
                  f"try now to log in with user/password [xxx/***]")
     _wait.until(ec.visibility_of_element_located((By.CSS_SELECTOR,'button.btn:nth-child(8)')))
     sleep(2)
-    _driver.find_element_by_id('page-login-inp-username').send_keys(_user)
+    _driver.find_element(By.ID, 'page-login-inp-username').send_keys(_user)
     sleep(2)
-    _driver.find_element_by_id('page-login-inp-password').send_keys(_password)
-    _driver.find_element_by_css_selector('button.btn:nth-child(8)').click()
+    _driver.find_element(By.ID, 'page-login-inp-password').send_keys(_password)
+    _driver.find_element(By.CSS_SELECTOR,'#PageLogin > button').click()
+    # a spam protect exists wait for
+    # PageLogin > p
     return _driver
 
 
@@ -231,14 +232,31 @@ def download_cover(_jahr, _monat):
     try:
         logging.info(f'https://www.gamestar.de/dvdhuelle{str(_monat).zfill(2)}{_jahr}')
         driver.get(f'https://www.gamestar.de/dvdhuelle{str(_monat).zfill(2)}{_jahr}')
-    except TimeoutException as e:
-        logging.info("Expected timeout - caused by selenium pdf download")
+    except TimeoutException:
+        logging.info(f"Expected timeout: - caused by selenium pdf download")
         pass
-    except Exception as e:
-        logging.error(e)
+    except Exception as error:
+        logging.error(error)
         pass
-    logging.info("Check for newest file...")
+    #download still in progress?
+    timeout = 10
+    logging.debug(f"Download timeout is:[{timeout}] - looking for [{user_data[0]['downloadtargetcovers']}/*.crdownload]")
+    time_out = time() + 2
 
+    while not glob.glob(f"{user_data[0]['downloadtargetcovers']}/*.crdownload") and time() < time_out:
+        logging.debug(f"{user_data[0]['downloadtargetcovers']}/*.crdownload not yet seen- waiting for first download")
+        sleep(2)
+    time_out = time() + timeout
+    while glob.glob(f"{user_data[0]['downloadtargetcovers']}/*.crdownload") and time() < time_out:
+        logging.debug(f"{user_data[0]['downloadtargetcovers']}/*.crdownload Seen- waiting")
+        sleep(1.5)
+    if glob.glob(f"{user_data[0]['downloadtargetcovers']}/*.crdownload"):
+        logging.warning('Download still in progress - may need recheck - aborting wait to continue'
+                        ' - may complete in background')
+    else:
+        logging.info('Download done successful')
+
+    logging.info("Check for newest file...")
     list_of_files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*pdf", recursive=False)
     if len(list_of_files) == 0:
         logging.warning(f"It looks like this cover is missing on server:[{str(_monat).zfill(2)}{_jahr}]")
@@ -327,7 +345,7 @@ def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_whiled
         driver.get(f'https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahrdl}&bkm={ausgabedl}')
         sleep(4)
         try:
-            driver.find_element_by_css_selector('#cbutton1').click()
+            driver.find_element(By.CSS_SELECTOR,'#cbutton2').click()
         except:
             logging.info('Cookies already satisfied')
         sleep(3)
@@ -353,7 +371,7 @@ def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_whiled
         # wait for the complete.pdf; check if the user is a valid user  and not guest
         wait_de.until(ec.visibility_of_element_located((By.XPATH, "//a[contains(@href, 'complete.pdf')]")))
         # click on the download / save button
-        driver.find_element_by_xpath("//a[contains(@href, 'complete.pdf')]").click()
+        driver.find_element(By.XPATH,"//a[contains(@href, 'complete.pdf')]").click()
         sleep(1)
         resultdl1 = wait_for_download(f"{user_data[0]['downloadtarget']}/{_filenamepattern_whiledownload}",
                                       timeout=user_data[0]['downloadtimeout'])
@@ -390,17 +408,17 @@ def wait_for_download(filedownloadfullpath, timeout=30):
          False for Partial donwloaded file still seen after timeout.
 
     """
-    logging.debug(f'Download timeout is:[{timeout}] - looking for [{filedownloadfullpath}.part]')
+    logging.debug(f'Download timeout is:[{timeout}] - looking for [{filedownloadfullpath}.crdownload]')
     time_out = time() + 2
 
-    while not glob.glob(f'{filedownloadfullpath}.part') and time() < time_out:
-        logging.debug(f'{filedownloadfullpath}.part not yet seen- waiting for first download')
+    while not glob.glob(f'{filedownloadfullpath}.crdownload') and time() < time_out:
+        logging.debug(f'{filedownloadfullpath}.crdownload not yet seen- waiting for first download')
         sleep(2)
     time_out = time() + timeout
-    while glob.glob(f'{filedownloadfullpath}.part') and time() < time_out:
-        logging.debug(f'{filedownloadfullpath}.part Seen- waiting')
+    while glob.glob(f'{filedownloadfullpath}.crdownload') and time() < time_out:
+        logging.debug(f'{filedownloadfullpath}.crdownload Seen- waiting')
         sleep(1.5)
-    if glob.glob(f'{filedownloadfullpath}.part'):
+    if glob.glob(f'{filedownloadfullpath}.crdownload'):
         logging.warning('Download still in progress - may need recheck - aborting wait to continue'
                         ' - may complete in background')
         return False
@@ -443,6 +461,22 @@ def move_downloaded(_targetfolder, _year, _fn_downloaded, _fn_target, _timeout=3
         return False
 
 
+def extract_page(input_pdf, page_number, output_pdf):
+    # Erstelle ein PdfReader-Objekt
+    pdf_reader = PdfReader(input_pdf)
+
+    # Erstelle ein PdfWriter-Objekt
+    pdf_writer = PdfWriter()
+
+    # Hole die angegebene Seite und füge sie dem PdfWriter hinzu
+    page = pdf_reader.pages[page_number]
+    pdf_writer.add_page(page)
+
+    # Schreibe die Seite in eine neue PDF-Datei
+    with open(output_pdf, 'wb') as output_file:
+        pdf_writer.write(output_file)
+
+
 def print_cover(cover_file, page_to_print):
     """Extracts a given page number from the inlay file and than print the file to the default printer
     the extract was added as direct print was not working in the expected way
@@ -454,40 +488,47 @@ def print_cover(cover_file, page_to_print):
     Returns:
         none
     """
-    temp1 = tempfile.mktemp('.eps')
-    page_seite = str(page_to_print)
-    args_extract = [
-        "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dNOPROMPT",
-        "-q",
-        "-sDEVICE=eps2write",
-        "-dFirstPage="+page_seite,
-        "-dLastPage="+page_seite,
-        "-sOutputFile=" + temp1,
-        "-f",
-        cover_file
-    ]
-    # for printing on default printer
-    args_printing = [
-        "-dPrinted", "-dBATCH", "-dNOPAUSE", "-dSAFER", "-dNOPROMPT", "-dQueryUser=3",
-        "-q",
-        "-dNumCopies=1",
-        "-dEPSFitPage",
-        "-sDEVICE=mswinpr2",
-        f'-sOutputFile="%printer%{win32print.GetDefaultPrinter()}"',
-        "-f",
-        temp1
-    ]
-    logging.info(f"Create temp PDF file [{temp1}]")
-    ghostscript.Ghostscript(*args_extract)
-    logging.info(f"Print to Printer:{win32print.GetDefaultPrinter()}")
-    ghostscript.Ghostscript(*args_printing)
-    os.remove(temp1)
+    input_pdf = r"C:\temp\Gamestar-archive\covers\2024\GS2024_08_Inlay-Coverpack.pdf"
+    page_number = 0  # Seitennummern beginnen bei 0
+    output_pdf = tempfile.mktemp('.pdf')
+    extract_page(input_pdf, page_number, output_pdf)
 
+    # Get the default printer name
+    default_printer = win32print.GetDefaultPrinter()
+
+    # Print the PDF file
+    win32api.ShellExecute(0, "print", output_pdf, None, None, 0)
+    # os.remove(output_pdf)
+
+
+def create_webdriver_cover():
+    chrome_driver_path = "chromedriver-win64/chromedriver.exe"
+    chrome_service = Service(executable_path=chrome_driver_path)
+    chrome_options = Options()
+    chrome_options.binary_location = "chrome-win64/chrome.exe"
+    chrome_options.add_experimental_option('prefs', {
+        "profile.default_content_settings.popups": 0,
+        "download.default_directory": f"{user_data[0]['downloadtargetcovers']}",
+        # Change this to your desired download directory
+        "download.prompt_for_download": False,  # Disable download prompt
+        "plugins.always_open_pdf_externally": True,  # Disable PDF viewer
+        "directory_upgrade": True
+    })
+    chrome_options.add_argument("--start-minimized")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+    if user_data[0]['browser_display_on_latest'].lower() == "no":
+        chrome_options.add_argument("--headless=new")
+        # Needed for Chromedriver 129
+        chrome_options.add_argument("--window-position=-2400,-2400")
+    my_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"
+    chrome_options.add_argument(f"--user-agent={my_user_agent}")
+    _driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
+    sleep(5)
+    return _driver
 
 if __name__ == '__main__':
-    #get_driver = GetGeckoDriver()
-    #get_driver.install()
-
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     key_list_gsjson = ['log_level', 'downloadtarget', 'edition2d', 'downloadtimeout', 'abortlimit',
                        'filenamepattern_intarget', 'filenamepattern_fromserver', 'filenamepattern_fromserver',
@@ -583,20 +624,29 @@ if __name__ == '__main__':
         logging.info(f"Create folder [{user_data[0]['downloadtarget']}]")
         os.makedirs(f"{user_data[0]['downloadtarget']}")
 
-    profileFF: FirefoxProfile = webdriver.FirefoxProfile()
-    profileFF.set_preference('browser.download.folderList', 2)
-    profileFF.set_preference('browser.helperApps.alwaysAsk.force', False)
-    profileFF.set_preference('browser.download.manager.showWhenStarting', False)
-    profileFF.set_preference('browser.download.dir', f"{user_data[0]['downloadtarget']}")
+    chrome_driver_path = "chromedriver-win64/chromedriver.exe"
+    chrome_service = Service(executable_path=chrome_driver_path)
+    chrome_options = Options()
+    chrome_options.binary_location = "chrome-win64/chrome.exe"
+    chrome_options.add_experimental_option('prefs', {
+        "profile.default_content_settings.popups": 0,
+        # Change this to your desired download directory
+        "download.default_directory": f"{user_data[0]['downloadtarget']}",
+        "download.prompt_for_download": False,  # Disable download prompt
+        "plugins.always_open_pdf_externally": True,  # Disable PDF viewer
+        "directory_upgrade": True
+    })
+    chrome_options.add_argument("--start-minimized")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
 
-    profileFF.set_preference('plugin.disable_full_page_plugin_for_types', 'application/pdf')
-    profileFF.set_preference('pdfjs.disabled', True)
-    profileFF.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/pdf')
+    if user_data[0]['browser_display_on_latest'].lower() == "no":
+        chrome_options.add_argument("--headless=new")
+        #Needed for Chromedriver 129
+        chrome_options.add_argument("--window-position=-2400,-2400")
+    my_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"
+    chrome_options.add_argument(f"--user-agent={my_user_agent}")
 
-    optionsFF = Options_FF()
-    optionsFF.headless = False
-    if args.latest and user_data[0]['browser_display_on_latest'].lower() == "no":
-        optionsFF.headless = True
 
     logging.info(f"Download location:{user_data[0]['downloadtarget']}")
     logging.info(f"filenamepattern_fromserver:{user_data[0]['filenamepattern_fromserver']}")
@@ -609,7 +659,7 @@ if __name__ == '__main__':
     if args.year:
         logging.info('Run Type: Year')
         driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
-                                    optionsFF, profileFF)
+                                    chrome_options, chrome_service)
         year = args.year
         abort_flag = 0
         for edition in range(1, 14):
@@ -653,7 +703,7 @@ if __name__ == '__main__':
         ausgabe = str(int(ausgabe)+1)
         continue_download = True
         driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
-                                    optionsFF, profileFF)
+                                    chrome_options, chrome_service)
         while continue_download:
             logging.info(f"Trying now to download the latest version for (Editions/Year) (curMonth/curYear)=>"
                          f"({ausgabe}/{jahr}) ({current_month}/{current_year})")
@@ -690,8 +740,8 @@ if __name__ == '__main__':
         user_data[0]['latestdownload'][0]['edition'] = ausgabe_lastdl
 
         logging.info(f'Update JSON file ({json_config_file})')
-        with open(json_config_file, 'w') as outfile:
-            json.dump(user_data, outfile, indent=4, sort_keys=False)
+        # with open(json_config_file, 'w') as outfile:
+        #     json.dump(user_data, outfile, indent=4, sort_keys=False)
     elif args.full:
         logging.info('Run Type: Full')
         range_start_year = "1997"
@@ -701,7 +751,7 @@ if __name__ == '__main__':
 
         logging.debug(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
         driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
-                                    optionsFF, profileFF)
+                                    chrome_options, chrome_service)
         download_range(range_start_year, range_start_month, range_end_year, range_end_month)
 
     elif args.range:
@@ -722,15 +772,11 @@ if __name__ == '__main__':
             logging.error('Range end is older than start.')
             sys.exit(95)
         driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
-                                    optionsFF, profileFF)
+                                    chrome_options, chrome_service)
         download_range(range_start_year, range_start_month, range_end_year, range_end_month)
     elif args.cover:
         logging.info('Run Type: Covers (full)')
-        profileFF.set_preference('browser.download.dir', f"{user_data[0]['downloadtargetcovers']}")
-        optionsFF.headless = False
-        if user_data[0]['browser_display_on_latest'].lower() == "no":
-            optionsFF.headless = True
-        driver = webdriver.Firefox(options=optionsFF, firefox_profile=profileFF)
+        driver = create_webdriver_cover()
         driver.set_page_load_timeout(1)
         wait = WebDriverWait(driver, 5)
         if not os.path.exists(f"{user_data[0]['downloadtargetcovers']}"):
@@ -740,17 +786,13 @@ if __name__ == '__main__':
         try:
             for jahr in range(2000, datetime.now().year+1):
                 for monat in range(1, 13):
-                    download_cover(jahr, monat)
+                    download_cover(driver,jahr, monat)
         except Exception as e:
             logging.error(e)
             pass
     elif args.coverlatest:
         logging.info('Run Type: Covers (latest)')
-        profileFF.set_preference('browser.download.dir', f"{user_data[0]['downloadtargetcovers']}")
-        optionsFF.headless = False
-        if user_data[0]['browser_display_on_latest'].lower() == "no":
-            optionsFF.headless = True
-        driver = webdriver.Firefox(options=optionsFF, firefox_profile=profileFF)
+        driver = create_webdriver_cover()
         driver.set_page_load_timeout(1)
         wait = WebDriverWait(driver, 5)
         if not os.path.exists(f"{user_data[0]['downloadtargetcovers']}"):
@@ -788,7 +830,7 @@ if __name__ == '__main__':
             logging.debug(f"maxMonth, maxYear=>({max_month_latest}, {max_year_latest})")
 
             result = download_cover(int(jahr), int(ausgabe))
-            logging.debug(f"result [{result}]")
+            logging.debug(f"download result: [{result}]")
 
             if result < 10:
                 logging.debug(f"Last success download [{ausgabe_lastdl}/{jahr_lastdl}]")
