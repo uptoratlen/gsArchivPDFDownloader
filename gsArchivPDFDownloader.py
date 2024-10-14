@@ -1,4 +1,4 @@
-__version_info__ = ('0', '9', '0')
+__version_info__ = ('0', '9', '1')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -226,10 +226,65 @@ def download_range(_range_start_year, _range_start_month, _range_end_year, _rang
             _continue_download = False
 
 
-def download_cover(_jahr, _monat):
+def download_range_cover(_driver,_range_start_year, _range_start_month, _range_end_year, _range_end_month):
+    """Download wrapper for range and full cover
+
+    Args:
+        _driver (class): webdriver cover
+        _range_start_year (str): year of requested downloads start
+        _range_start_month (str): month/edition of requested downloads start
+        _range_end_year (str): year of requested downloads end
+        _range_end_month (str): month/edition of requested downloads end
+
+    Returns:
+        None
+
+    """
+    _jahr = _range_start_year
+    _ausgabe = _range_start_month
+    _continue_download = True
+    error_list = []
+    _abort_flag = 0
+    while _continue_download:
+        logging.info(f"Trying now to download  (Cover/Year) => ({_ausgabe}/{_jahr})")
+        _result = download_cover(_driver,_jahr, _ausgabe)
+        if _result < 10:
+            _abort_flag = 0
+        else:
+            logging.warning(f'Download failed(load) - adding [{_ausgabe}/{_jahr}] to report.')
+            error_list.append(f'{_jahr}/{_ausgabe}')
+            _abort_flag += 1
+            logging.info(f"As cover was not found; increase abort counter "
+                         f"[{_abort_flag}/{user_data[0]['abortlimit']}]")
+
+        if _abort_flag >= user_data[0]['abortlimit']:
+            logging.info(f'The abort limitcounter reached the maxmium allwed and will now abort the run')
+            break
+
+        _ausgabe = str(int(_ausgabe) + 1)
+        if int(_jahr) == 2013 and int(_ausgabe) == 13:
+            logging.info('Special year 2013 with 13th edition in range')
+        elif (int(_jahr) != 2013 and int(_ausgabe) == 13) or (int(_jahr) == 2013 and int(_ausgabe) == 14):
+            logging.info('Roll over in loop to next year')
+            _ausgabe = str(1)
+            _jahr = str(int(_jahr) + 1)
+
+        if int(_range_end_year + _range_end_month.zfill(2)) >= int(_jahr + _ausgabe.zfill(2)):
+            logging.debug('Loop fine - expecting still a next cover.')
+            continue
+        else:
+            logging.debug('Stop latest download loop - max reached.')
+            if len(error_list) > 0:
+                logging.warning(f'Some cover showed some recoverable issues while downloading -'
+                                f' try same run a second time.')
+                logging.warning(f'{error_list}')
+            _continue_download = False
+
+def download_cover(_driver, _jahr, _monat):
     """The cover download function
 
     Args:
+        _driver (object): webdriver object
         _jahr (int): year of requested cover
         _monat (int): month/edition of requested cover
 
@@ -245,10 +300,16 @@ def download_cover(_jahr, _monat):
     """
     filename_cover_intarget_sub = f'GS{_jahr}_{str(_monat).zfill(2)}_Inlay-Coverpack'
 
-    if os.path.exists(f"{user_data[0]['downloadtargetcovers']}/{jahr}/"
+    if os.path.exists(f"{user_data[0]['downloadtargetcovers']}/{_jahr}/"
                       f"{filename_cover_intarget_sub}.pdf"):
-        logging.info("Skip, download of cover - already existing in target")
-        return 2
+        if args.overwrite:
+            logging.info(f"Overwrite Download - remove file [{user_data[0]['downloadtargetcovers']}/"
+                          f"{_jahr}/{filename_cover_intarget_sub}.pdf]")
+            os.remove(f"{user_data[0]['downloadtargetcovers']}/{_jahr}/"
+                      f"{filename_cover_intarget_sub}.pdf")
+        else:
+            logging.info("Skip, download of cover - already existing in target")
+            return 2
 
     files = glob.glob(f"{user_data[0]['downloadtargetcovers']}/*.pdf*")
     for fn in files:
@@ -361,9 +422,14 @@ def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_whiled
                      f"'requested ({ausgabedl}/{jahrdl}'")
         return 3
     if os.path.exists(f"{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}"):
-        logging.info(f"Skip download - already existing "
-                     f"'{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}'")
-        return 2
+        if args.overwrite:
+            logging.info(f"Overwrite Download - remove file [{user_data[0]['downloadtarget']}/{jahrdl}/"
+                         f"{_filenamepattern_local}]")
+            os.remove(f"{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}")
+        else:
+            logging.info(f"Skip download - already existing "
+                         f"'{user_data[0]['downloadtarget']}/{jahrdl}/{_filenamepattern_local}'")
+            return 2
     try:
         logging.info(f'Try now download of : Jahr {jahrdl} and Ausgabe {ausgabedl} '
                      f'- URL:https://www.gamestar.de/_misc/plus/showbk.cfm?bky={jahrdl}&bkm={ausgabedl}')
@@ -559,6 +625,10 @@ def create_webdriver_cover():
     sleep(5)
     return _driver
 
+
+
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     key_list_gsjson = ['log_level', 'downloadtarget', 'edition2d', 'downloadtimeout', 'abortlimit',
@@ -609,36 +679,41 @@ if __name__ == '__main__':
     logger.addHandler(sh)
 
     parser = argparse.ArgumentParser(description='Download GameStar PDFs from webpage')
-    parser.add_argument('-l', '--latest',  action='store_const',
-                        const=True, help=f"try to download always the newest (starting from "
-                                         f"{user_data[0]['latestdownload'][0]['year']}-"
-                                         f"{user_data[0]['latestdownload'][0]['edition']})")
-    parser.add_argument('-cl', '--coverlatest',  action='store_const',
-                        const=True, help=f"try to download always the newest cover (starting from "
-                                         f"{user_data[0]['latestdownload_cover'][0]['year']}-"
-                                         f"{user_data[0]['latestdownload_cover'][0]['edition']})")
-    parser.add_argument('-f', '--full',  action='store_const',
-                        const=True, help=f"a full download of all editions from 1997/09 to "
-                                         f"{datetime.now().month}/"
-                                         f"{datetime.now().year}")
+    parser.add_argument('-e', '--edition',  action='store_const',
+                        const=True, help=f"Run Type Edition (Magazin) ")
     parser.add_argument('-c', '--cover',  action='store_const',
-                        const=True, help=f"a full download of all covers from from 2000/01 to "
+                        const=True, help=f"Run type Cover (Coverpack)")
+    parser.add_argument('-l', '--latest',  action='store_const',
+                        const=True, help=f"try to download always the newest (starting from last downloaded  "
+                                         f"{user_data[0]['latestdownload'][0]['year']}-"
+                                         f"{user_data[0]['latestdownload'][0]['edition']}) to most recent")
+    parser.add_argument('-f', '--full',  action='store_const',
+                        const=True, help=f"a full download of all editions/covers from 1997/09 to "
                                          f"{datetime.now().month}/"
                                          f"{datetime.now().year}")
     parser.add_argument('-y', '--year', type=int, help='a single year in range [1997-2035]')
     parser.add_argument('-r', '--range', type=str, help='a range in format yyyy:mm-yyyy:mm; example -r 2019:09-2020:11')
+    parser.add_argument('-o', '--overwrite', action='store_true', help='force download even file exists')
+    parser.add_argument('-mc', '--missingcheck', action='store_true', help='List all missing files.')
     parser.add_argument('-v', '--version', action='version', version="%(prog)s ("+__version__+")")
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(0)
     args = parser.parse_args()
 
-    if args.year and (args.year < 1997 or args.year > 2035):
-        parser.error("Select a year within range 1997 to 2035")
-    if args.range:
+    if args.edition and args.year and (args.year < 1997 or args.year > 2039):
+        parser.error("Select a year within range 1997 to 2039 for editions")
+    if args.cover and args.year and (args.year < 2000 or args.year > 2039):
+        parser.error("Select a year within range 2000 to 2039 for covers")
+    if args.edition and args.range:
         matched = re.match(r"^(199[7-9]|20[0-3]\d):(0[0-9]|1[0123])-(199[7-9]|20[0-3]\d):(0[0-9]|1[0123])$", args.range)
         if not bool(matched):
-            logging.error('The range argument is not in the right format.')
+            logging.error('The range argument is not in the right format for editions.')
+            sys.exit(95)
+    if args.cover and args.range:
+        matched = re.match(r"^(20[0-3]\d):(0[0-9]|1[0123])-(20[0-3]\d):(0[0-9]|1[0123])$", args.range)
+        if not bool(matched):
+            logging.error('The range argument is not in the right format for covers.')
             sys.exit(95)
 
     logging.info(f"gsArchivPDFDownloader Version:{__version__}")
@@ -705,8 +780,8 @@ if __name__ == '__main__':
     url_login = 'https://www.gamestar.de/login/'
     url = 'https://www.gamestar.de/plus/'
 
-    if args.year:
-        logging.info('Run Type: Year')
+    if args.edition and args.year:
+        logging.info('Run Type: Edition Year')
         driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
                                     chrome_options, chrome_service)
         year = args.year
@@ -726,8 +801,8 @@ if __name__ == '__main__':
                 logging.info(f'The abort limitcounter reached the maxmium allwed and will now abort the run')
                 break
 
-    elif args.latest:
-        logging.info('Run Type: Latest')
+    elif args.edition and args.latest:
+        logging.info('Run Type: Edition Latest')
         current_year = datetime.now().year
         current_month = datetime.now().month
         current_day = datetime.now().day
@@ -789,10 +864,11 @@ if __name__ == '__main__':
         user_data[0]['latestdownload'][0]['edition'] = ausgabe_lastdl
 
         logging.info(f'Update JSON file ({json_config_file})')
-        # with open(json_config_file, 'w') as outfile:
-        #     json.dump(user_data, outfile, indent=4, sort_keys=False)
-    elif args.full:
-        logging.info('Run Type: Full')
+        with open(json_config_file, 'w') as outfile:
+             json.dump(user_data, outfile, indent=4, sort_keys=False)
+
+    elif args.edition and args.full:
+        logging.info('Run Type: Edition Full')
         range_start_year = "1997"
         range_start_month = "09"
         range_end_year = str(datetime.now().year)
@@ -803,8 +879,8 @@ if __name__ == '__main__':
                                     chrome_options, chrome_service)
         download_range(range_start_year, range_start_month, range_end_year, range_end_month)
 
-    elif args.range:
-        logging.info('Run Type: Range')
+    elif args.edition and args.range:
+        logging.info('Run Type: Edition Range')
         range_selection = args.range
 
         range_selection_split = range_selection.split("-")
@@ -823,8 +899,8 @@ if __name__ == '__main__':
         driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
                                     chrome_options, chrome_service)
         download_range(range_start_year, range_start_month, range_end_year, range_end_month)
-    elif args.cover:
-        logging.info('Run Type: Covers (full)')
+    elif args.cover and args.full:
+        logging.info('Run Type: Covers Full')
         driver = create_webdriver_cover()
         driver.set_page_load_timeout(1)
         wait = WebDriverWait(driver, 5)
@@ -839,8 +915,48 @@ if __name__ == '__main__':
         except Exception as e:
             logging.error(e)
             pass
-    elif args.coverlatest:
-        logging.info('Run Type: Covers (latest)')
+
+    elif args.cover and args.range:
+        logging.info('Run Type: Cover Range')
+        range_selection = args.range
+
+        range_selection_split = range_selection.split("-")
+        range_start_year = range_selection_split[0].split(":")[0]
+        range_start_month = range_selection_split[0].split(":")[1]
+        range_end_year = range_selection_split[1].split(":")[0]
+        range_end_month = range_selection_split[1].split(":")[1]
+
+        logging.debug(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
+        if int(range_start_year + range_start_month.zfill(2)) <= 199708:
+            logging.error('Range start is to early.')
+            sys.exit(95)
+        if int(range_start_year + range_start_month.zfill(2)) > int(range_end_year + range_end_month.zfill(2)):
+            logging.error('Range end is older than start.')
+            sys.exit(95)
+        driver = create_webdriver_cover()
+        driver.set_page_load_timeout(1)
+        wait = WebDriverWait(driver, 5)
+        download_range_cover(driver,range_start_year, range_start_month, range_end_year, range_end_month)
+
+
+    elif args.cover and args.year:
+        logging.info('Run Type: Cover Year')
+        driver = create_webdriver_cover()
+        driver.set_page_load_timeout(1)
+        wait = WebDriverWait(driver, 5)
+        if not os.path.exists(f"{user_data[0]['downloadtargetcovers']}"):
+            logging.info(f"Create folder {user_data[0]['downloadtargetcovers']}")
+            os.makedirs(f"{user_data[0]['downloadtargetcovers']}")
+        try:
+            year = args.year
+            for month in range(1, 13):
+                download_cover(driver, year, month)
+        except Exception as e:
+            logging.error(e)
+            pass
+
+    elif args.cover and args.latest:
+        logging.info('Run Type: Covers Latest')
         driver = create_webdriver_cover()
         driver.set_page_load_timeout(1)
         wait = WebDriverWait(driver, 5)
@@ -848,7 +964,6 @@ if __name__ == '__main__':
             logging.info(f"Create folder {user_data[0]['downloadtargetcovers']}")
             os.makedirs(f"{user_data[0]['downloadtargetcovers']}")
 
-        logging.info('Run Type: CoverLatest')
         current_year = datetime.now().year
         current_month = datetime.now().month
         current_day = datetime.now().day
@@ -878,7 +993,7 @@ if __name__ == '__main__':
                          f"({ausgabe}/{jahr}) ({current_month}/{current_year})")
             logging.debug(f"maxMonth, maxYear=>({max_month_latest}, {max_year_latest})")
 
-            result = download_cover(int(jahr), int(ausgabe))
+            result = download_cover(driver, int(jahr), int(ausgabe))
             logging.debug(f"download result: [{result}]")
 
             if result < 10:
@@ -914,7 +1029,7 @@ if __name__ == '__main__':
             json.dump(user_data, outfile, indent=4, sort_keys=False)
 
     else:
-        logging.error('Run Type: not supported')
+        logging.error('Run Type: not supported contact dev')
         sys.exit(97)
 
     logging.info(f"Last requested edition downloaded - give job some time (10s) to finish, for no good reason...")
