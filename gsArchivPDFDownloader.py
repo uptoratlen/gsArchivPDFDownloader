@@ -60,6 +60,14 @@ def _open_gs_and_login(_url, _user, _password, _options, _service):
     sleep(2)
     _driver.find_element(By.ID, 'page-login-inp-password').send_keys(_password)
     _driver.find_element(By.CSS_SELECTOR,'#PageLogin > button').click()
+    sleep(2)
+    try:
+        _driver.find_element(By.XPATH,
+                                     "//*[contains(text(), 'Der Login ist wegen Spamschutzmaßnahmen fehlgeschlagen. Bitte versuche es nochmal. Besteht das Problem weiterhin, kontaktiere bitte unseren Support.')]")
+        logging.error("Looks like Spam protection is in place - try again later - aborting")
+        sys.exit(99)
+    except:
+        logging.info("Login passed -at least no spam message")
     return _driver
 
 def download_chromedriver(version='129.0.6668.100', extract_to='.'):
@@ -142,9 +150,9 @@ def filename_modification(filestring_downloaded, filestring_whiledownloaded, fil
     Raises:
         TypeError: in case input is not str and exists
     """
-    logging.debug(f'Filename after Download on disk :[{filestring_downloaded}]')
-    logging.debug(f'Filename while Download on disk :[{filestring_whiledownloaded}]')
-    logging.debug(f'Filename for Target(modified)   :[{filestring_target}]')
+    logging.debug(f'Filename after Download on disk 1 :[{filestring_downloaded}]')
+    logging.debug(f'Filename while Download on disk 1 :[{filestring_whiledownloaded}]')
+    logging.debug(f'Filename for Target(modified)   1 :[{filestring_target}]')
     try:
         if edition2d.lower() == 'yes':
             for filenamerepl in (("<ausgabe>", f"{'{:0>2}'.format(edition_month)}"), ("<jahr>", edition_jahr)):
@@ -157,9 +165,9 @@ def filename_modification(filestring_downloaded, filestring_whiledownloaded, fil
             filestring_downloaded = filestring_downloaded.replace(*filenamerepl)
             filestring_whiledownloaded = filestring_whiledownloaded.replace(*filenamerepl)
 
-        logging.info(f'Filename after Download on disk :[{filestring_downloaded}]')
-        logging.info(f'Filename while Download on disk :[{filestring_whiledownloaded}]')
-        logging.info(f'Filename for Target(modified)   :[{filestring_target}]')
+        logging.debug(f'Filename after Download on disk 2 :[{filestring_downloaded}]')
+        logging.debug(f'Filename while Download on disk 2 :[{filestring_whiledownloaded}]')
+        logging.debug(f'Filename for Target(modified)   2 :[{filestring_target}]')
         return filestring_downloaded, filestring_whiledownloaded, filestring_target
     except TypeError as _e:
         logging.exception(f'TypeError Exception Raised - str expected int found -{_e}')
@@ -247,7 +255,7 @@ def download_range_cover(_driver,_range_start_year, _range_start_month, _range_e
     _abort_flag = 0
     while _continue_download:
         logging.info(f"Trying now to download  (Cover/Year) => ({_ausgabe}/{_jahr})")
-        _result = download_cover(_driver,_jahr, _ausgabe)
+        _result = download_cover(_driver,int(_jahr), int(_ausgabe))
         if _result < 10:
             _abort_flag = 0
         else:
@@ -626,9 +634,6 @@ def create_webdriver_cover():
     return _driver
 
 
-
-
-
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     key_list_gsjson = ['log_level', 'downloadtarget', 'edition2d', 'downloadtimeout', 'abortlimit',
@@ -909,12 +914,102 @@ if __name__ == '__main__':
             os.makedirs(f"{user_data[0]['downloadtargetcovers']}")
 
         try:
-            for jahr in range(2000, datetime.now().year+1):
+            for jahr in range(2015, datetime.now().year+1):
                 for monat in range(1, 13):
                     download_cover(driver,jahr, monat)
         except Exception as e:
             logging.error(e)
             pass
+
+    elif args.edition and args.missingcheck:
+        logging.info('Run Type: Edition Missingcheck')
+        range_start_year = "1997"
+        range_start_month = "9"
+        range_end_year = str(datetime.now().year)
+        range_end_month = str(datetime.now().month)
+        logging.debug(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
+        _jahr = range_start_year
+        _ausgabe = range_start_month
+        _continue_check = True
+        error_list = []
+
+        while _continue_check:
+            logging.info(f"Checking now (Edition/Year) => ({_ausgabe}/{_jahr})")
+            _filenamepattern_download, _filenamepattern_whiledownload, _filenamepattern_local = filename_modification(
+                user_data[0]['filenamepattern_fromserver'], user_data[0]['filenamepattern_fromserverwhiledl'],
+                user_data[0]['filenamepattern_intarget'], str(_ausgabe),
+                str(_jahr), user_data[0]['edition2d'])
+
+            if os.path.exists(f"{user_data[0]['downloadtarget']}/{_jahr}/"
+                              f"{_filenamepattern_local}"):
+                logging.debug(f"Edition exist [{user_data[0]['downloadtarget']}/"
+                                 f"{_jahr}/{_filenamepattern_local}.pdf]")
+            else:
+                logging.info("Editon not found [{user_data[0]['downloadtarget']}/"
+                                 f"{_jahr}/{_filenamepattern_local}.pdf]")
+                error_list.append(f'{_jahr}/{_ausgabe}')
+
+            _ausgabe = str(int(_ausgabe) + 1)
+            if int(_jahr) == 2013 and int(_ausgabe) == 13:
+                logging.info('Special year 2013 with 13th edition in range')
+            elif (int(_jahr) != 2013 and int(_ausgabe) == 13) or (int(_jahr) == 2013 and int(_ausgabe) == 14):
+                logging.info('Roll over in loop to next year')
+                _ausgabe = str(1)
+                _jahr = str(int(_jahr) + 1)
+
+            if int(range_end_year + range_end_month.zfill(2)) >= int(_jahr + _ausgabe.zfill(2)):
+                logging.debug('Loop fine - expecting still a next cover.')
+                continue
+            else:
+                logging.debug('Stop latest download loop - max reached.')
+                if len(error_list) > 0:
+                    logging.warning(f'Full list of missing editions')
+                    logging.warning(f'{error_list}')
+                _continue_check = False
+
+    elif args.cover and args.missingcheck:
+        logging.info('Run Type: Covers Missingcheck')
+        range_start_year = "2015"
+        range_start_month = "1"
+        range_end_year = str(datetime.now().year)
+        range_end_month = str(datetime.now().month)
+        logging.debug(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
+        _jahr = range_start_year
+        _ausgabe = range_start_month
+        _continue_check = True
+        error_list = []
+        while _continue_check:
+            logging.info(f"Checking now (Cover/Year) => ({_ausgabe}/{_jahr})")
+            filename_cover_intarget_sub = f'GS{_jahr}_{str(_ausgabe).zfill(2)}_Inlay-Coverpack'
+            if os.path.exists(f"{user_data[0]['downloadtargetcovers']}/{_jahr}/"
+                              f"{filename_cover_intarget_sub}.pdf"):
+                logging.debug(f"Cover exist [{user_data[0]['downloadtargetcovers']}/"
+                                 f"{_jahr}/{filename_cover_intarget_sub}.pdf]")
+            else:
+                logging.info("Cover not found [{user_data[0]['downloadtargetcovers']}/"
+                                 f"{_jahr}/{filename_cover_intarget_sub}.pdf]")
+                error_list.append(f'{_jahr}/{_ausgabe}')
+
+            _ausgabe = str(int(_ausgabe) + 1)
+            if int(_jahr) == 2013 and int(_ausgabe) == 13:
+                logging.info('Special year 2013 with 13th edition in range')
+            elif (int(_jahr) != 2013 and int(_ausgabe) == 13) or (int(_jahr) == 2013 and int(_ausgabe) == 14):
+                logging.info('Roll over in loop to next year')
+                _ausgabe = str(1)
+                _jahr = str(int(_jahr) + 1)
+
+            if int(range_end_year + range_end_month.zfill(2)) >= int(_jahr + _ausgabe.zfill(2)):
+                logging.debug('Loop fine - expecting still a next cover.')
+                continue
+            else:
+                logging.debug('Stop latest download loop - max reached.')
+                if len(error_list) > 0:
+                    logging.warning(f'Full list of missing covers')
+                    logging.warning(f'{error_list}')
+                _continue_check = False
+
+
+
 
     elif args.cover and args.range:
         logging.info('Run Type: Cover Range')
@@ -1032,7 +1127,8 @@ if __name__ == '__main__':
         logging.error('Run Type: not supported contact dev')
         sys.exit(97)
 
-    logging.info(f"Last requested edition downloaded - give job some time (10s) to finish, for no good reason...")
-    sleep(10)
-    driver.quit()
+    if 'driver' in globals():
+        logging.info(f"Last requested edition downloaded - give job some time (10s) to finish, for no good reason...")
+        sleep(10)
+        driver.quit()
     logging.info('Job done')

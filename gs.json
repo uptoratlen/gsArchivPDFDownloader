@@ -1,8 +1,8 @@
 [
     {
         "log_level": "INFO",
-        "downloadtarget": "t:\\Gamestar-archive",
-        "downloadtargetcovers": "t:\\Gamestar-archive\\covers",
+        "downloadtarget": "c:\\Gamestar-archive",
+        "downloadtargetcovers": "c:\\Gamestar-archive\\covers",
         "edition2d": "Yes",
         "downloadtimeout": 240,
         "abortlimit": 2,
@@ -17,8 +17,8 @@
         ],
         "latestdownload_cover": [
             {
-                "year": "1997",
-                "edition": "8"
+                "year": "2015",
+                "edition": "1"
             }
         ],
         "cover_page_print": "Yes",
