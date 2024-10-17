@@ -22,6 +22,7 @@ import win32api
 from PyPDF2 import PdfReader, PdfWriter
 
 from selenium import webdriver
+from selenium.webdriver import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 
@@ -34,7 +35,7 @@ from selenium.common.exceptions import TimeoutException
 
 def clearbrowserdata(_driver):
     """Clear browserdata for chrome to get rid of cookies and so on
-
+    With stupid keys, cause none of the By worked as expected, again 129?
     Args:
         _driver (class): Chromedriver
 
@@ -43,10 +44,16 @@ def clearbrowserdata(_driver):
 
     """
     _driver.get('chrome://settings/clearBrowserData')
-    _wait = WebDriverWait(driver, 10)
-    clear_button = wait.until(ec.element_to_be_clickable((By.CSS_SELECTOR, '* /deep/ #clearBrowsingDataConfirm')))
-    clear_button.click()
-
+    sleep(1)
+    _wait = WebDriverWait(_driver, 10)
+    actions = ActionChains(_driver)
+    actions.send_keys(4 * (Keys.SHIFT + Keys.TAB))
+    actions.send_keys(6 * Keys.DOWN)
+    actions.send_keys(5 * Keys.TAB)
+    actions.send_keys(6 * Keys.ENTER)
+    actions.perform()
+    logging.info("Browser Cache Data deleted")
+    sleep(3)
 
 def _open_gs_and_login(_url, _user, _password, _options, _service):
     """Returns a webdriver :class:'webdriver.Chrome(options=chrome_options, service=service_options)' object
@@ -686,6 +693,7 @@ def create_webdriver_cover():
     my_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"
     chrome_options.add_argument(f"--user-agent={my_user_agent}")
     _driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
+    sleep(5)
     clearbrowserdata(_driver)
     sleep(5)
     return _driver
