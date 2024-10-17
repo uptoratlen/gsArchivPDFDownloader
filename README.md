@@ -14,12 +14,12 @@
   - [skip_editions in gs.json](#skip_editions-in-gsjson)
 - [Run](#run)
   - [commandline argument](#commandline-argument)
-    - [--full](#--full)
+    - [--edition](#--edition)
     - [--cover](#--cover)      
+    - [--full](#--full)
     - [--range](#--range)
     - [--year](#--year)
     - [--latest](#--latest)
-    - [--coverlatest](#--coverlatest)
 - [Remarks](#remarks)
 - [FAQ](#faq)
 
@@ -43,7 +43,9 @@ Video shows Version 0.1 - current solution works similar, with a bit different l
 The video displays what the start of the program would look like, than the start of the download. In this sample there are already some previous downloaded file. It will skip 1998/1 to 1998/6, than it will download 1998/7. Skip 8/1998 as also previously downloaded. Download 9/1998 and skip again 10/1998. The job was stopped for demo after 1/1999 and finally a tree is displayed. This is what the years should look like in the very end.
 
 ### Exclusion
-* The edition 2017/10 was a exception until May 11th 2021: Caused by an error in "Blättercatalog"  
+* GS added a spam protection in late 2024. I tried to at least catch the error and skip download. 
+* The edition 2017/10 was a exception until May 
+  11th 2021: Caused by an error in "Blättercatalog"  
 To prevent a error the edition is listed in [gs.json](#edit-gsjson) in key "skip_editions"  
 (thx to thomas-k for motivation): A warning will be displayed in case you try to download this edition  
   (09 March 2021) - I contacted GS on that.   
@@ -56,7 +58,8 @@ This is caused by a faulty pdf, I'm no expert on PDFs, but it looks like a font 
 ## Technologies
 The gsArchivPDFDownloader obviously was created in Python with Selenium and Chrome4Testing and Chromedriver.
 [Chromedriver](https://developer.chrome.com/docs/chromedriver/downloads?hl=de)
-Up to 0.9.0 Firefox and Gecko was used.
+
+Up to 0.9.0 Firefox and Geckodriver was used.
 
 For users with less experience, basically what it does:
 Python opens a chrome for testing instance (so your system browser does not get used) by the webdriver chromedriver (chromedriver is the link between Selenium and the chrome for testing browser), and than it simulates browser actions like a user does. Selenium is widly used to automate tests of web applications.
@@ -81,6 +84,25 @@ First use (env)
 winget install python.python.3.10
 ```
 If you install it by winget, open a new prompt, otherwise the env vars may not yet exist in the same shell.
+
+The next commands are written in case you use only one python. But Python suports multi versions installations.
+Maybe by chnace some other software installed already python?
+Check on a command prompt with :
+```
+where python.exe
+```
+In case oyu see something like 
+```
+C:\Users\user1\AppData\Local\Programs\Python\Python37\python.exe
+C:\Users\user1\AppData\Local\Programs\Python\Python310\python.exe
+C:\Users\user1\AppData\Local\Programs\Python\Python37-32\python.exe
+C:\Users\user1\AppData\Local\Microsoft\WindowsApps\python.exe
+```
+try to add the 
+C:\Users\user1\AppData\Local\Programs\Python\Python310\python.exe
+to every line or replace python.exe by the full path, like
+
+C:\Users\user1\AppData\Local\Programs\Python\Python310\python.exe -m pip....
 
 * Update pip itself
 ```
@@ -200,40 +222,49 @@ Currently, (May 2021) there should be only one edition (2017/10)
 
 ## Run 
 ### commandline argument
+Attention : v0.9.0 and later chaged the commandline 
 ```
-usage: gsArchivPDFDownloader.py [-h] [-l] [-f] [-y YEAR] [-r RANGE] [-v]
+usage: gsArchivPDFDownloader.py [-h] [-e] [-c] [-l] [-f] [-y YEAR] [-r RANGE] [-o] [-mc] [-v]
 
 Download GameStar PDFs from webpage
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  -l, --latest          try to download always the newest (starting from
-                        xxxx-x)
-  -cl, --coverlatest    try to download always the newest cover (starting from
-                        xxxx-x)
-  -f, --full            a full download of all editions from 1997/09 to x/xxxx
-  -c, --cover           a full download of all covers from from 2000/01 to
-                        x/xxxx
+  -e, --edition         Run Type Edition (Magazin)
+  -c, --cover           Run type Cover (Coverpack)
+  -l, --latest          try to download always the newest (starting from last downloaded 2024-10) to most recent
+  -f, --full            a full download of all editions/covers from 1997/09 to 10/2024
   -y YEAR, --year YEAR  a single year in range [1997-2035]
   -r RANGE, --range RANGE
-                        a range in fomrat yyyy:mm-yyyy:mm; example -r
-                        2019:09-2020:11
+                        a range in format yyyy:mm-yyyy:mm; example -r 2019:09-2020:11
+  -o, --overwrite       force download even file exists
+  -mc, --missingcheck   List all missing files.
   -v, --version         show program's version number and exit
 
 ```
 
-#### --full
-To start a download job open a cmd and type
+For all commands (execpt help and version) you need to use either [--edition|--cover]
+
+#### --edition
+This runtype creates a browser and logs in to PLUS with credentials.
+
+#### --cover
+This runtype creates a browser and downloads covers. No login is used.
+
+#### --full 
+
+To start a download job of editions open a cmd and type
 ```
-python gsArchivPDFDownloader.py -f 
+python gsArchivPDFDownloader.py -e -f 
 ```
 ```
-python gsArchivPDFDownloader.py --full 
+python gsArchivPDFDownloader.py --edition --full 
 ```
 
 Now the job will start, it will check and create the "downloadtarget" folder.
-It will open a firefox/geckodriver browser, login and open the URL for the archive.
-Than it will save the file. After the download is complete (no *.part is seen anymore), the new file is moved to a sub folder of the year.
+It will open a chrome3testing browser, login and open the URL for the archive.
+Than it will save the file. After the download is complete (no *.crdownload is seen anymore), the new file is moved 
+to a sub folder of the year.
 In other words the structure of the sample will look like
 ```
 
@@ -253,10 +284,10 @@ C:
 #### --cover
 To start a download job open a cmd and type
 ```
-python gsArchivPDFDownloader.py -c 
+python gsArchivPDFDownloader.py -c -f
 ```
 ```
-python gsArchivPDFDownloader.py --cover 
+python gsArchivPDFDownloader.py --cover --full 
 ```
 
 Now the job will start, it will check and create the "downloadtarget" folder.
@@ -285,9 +316,9 @@ no good reason.
 
 #### --range
 ```
-python gsArchivPDFDownloader.py --range YYYY:mm-YYYY:mm
+python gsArchivPDFDownloader.py --edition --range YYYY:mm-YYYY:mm
 
-Example: python gsArchivPDFDownloader.py --range 2012:02-2013:10
+Example: python gsArchivPDFDownloader.py --edition --range 2012:02-2013:10
 ```
 the argument ```YYYY:mm-YYYY:mm``` is in format   
 ```4 digits start year>:<2 digits start month>-<4 digits end year>:<2 digits end month>```
@@ -297,7 +328,8 @@ Script will check for correct format and valid range.
 Anything from 1997/08 to 2039/12 will be accepted as valid.
 
 #### --year
-eg. a commandline  ``` python gsArchivPDFDownloader.py -y 2020 ``` or  ``` python gsArchivPDFDownloader.py --year 2020``` 
+eg. a commandline  ``` python gsArchivPDFDownloader.py -e -y 2020 ``` or  ``` python gsArchivPDFDownloader.py 
+--edition --year 2020``` 
 will download all editions from 2020.
 In case the commandline is used, each year will try to get a 13 editions. Which currently does only exists in 2017.  
 Yes I know that does not make much sense, and this issue will be adressed in a next version.  
@@ -310,7 +342,7 @@ in case the number is 2 and the flow is like this: success - fail - success > th
 #### --latest
 In case you want to repeat the download on a monthly base after you downloaded all (with the initial function), this is the option for you.
 ```
-python gsArchivPDFDownloader.py --latest
+python gsArchivPDFDownloader.py --edition --latest
 ```
 This run will read 'latestdownload' from the json file and tries now to download the next edition, eg. the last download was 2021/03 and we are currently at the 28th of April,  
 this will first try to download the edition of 04/2021, than it will also check as it is past the 15th of the current month also to download the edition 05/2021.
@@ -320,14 +352,13 @@ Of course it makes maybe somehow sense to combine this with the json option "bro
 In this run type, the max edition number of a year is 12. So if ever a 13th edition will come up, I need a fix.
 ```
 Hint: If you create the task, create it as:  
-Windows 10 , hidden, run without user logged in , do not store password  
+Windows 11 , hidden, run without user logged in , do not store password  
 add the absolute path to the python.exe in program field, add the "--latest" as argument and  
 set the "start in folder" to the folder the gsArchivPDFDownloader.py is in.
 ```
 
-#### --coverlatest
 In case you want to repeat the download of a cover on a monthly base after you downloaded all (with the initial 
-function --cover), this is the option for you.
+function --cover --full), this is the option for you.
 ```
 python gsArchivPDFDownloader.py --coverlatest
 ```
@@ -336,12 +367,15 @@ download was 2021/03 and we are currently at the 28th of April,
 this will first try to download the cover of 04/2021, than it will also check as it is past the 15th of the 
 current month also to download the cover 05/2021.
 I guess that maybe around the third week of a month there is a potential release of the next edition.
-The "coverlatest" commandline also takes in credit of a year jump (\*crossing fingers\*) around December.
+The "--cover --latest" commandline also takes in credit of a year jump (\*crossing fingers\*) around December.
 Of course it makes maybe somehow sense to combine this with the json option "browser_display_on_latest" = "no".
 In this run type, the max cover number of a year is 12. So if ever a 13th cover will come up, I need a fix.
+
+Running this cover latest type is also printing the page defined in the gs.json the the default printer, if the 
+option is set.
 ```
 Hint: If you create the task, create it as:  
-Windows 10 , hidden, run without user logged in , do not store password  
+Windows 11 , hidden, run without user logged in , do not store password  
 add the absolute path to the python.exe in program field, add the "--coverlatest" as argument and  
 set the "start in folder" to the folder the gsArchivPDFDownloader.py is in.
 ```
@@ -378,7 +412,8 @@ Not sure how many this script used, but as long as I will use it I will update t
   I need to confess, I added some nice features after my initial use...for others...so it's ok?
   
 * Printing does not work for me.
-  Since 0.9 it is pretty straight forward. Before it was a mess. On the other hand rage against the printer?
+  Since 0.9 it is pretty straight forward. Before it was a mess. On the other hand rage against the printer? Give it 
+  a second try with versions later 0.9
 
 
 
