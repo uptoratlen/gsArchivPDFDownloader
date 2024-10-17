@@ -1,4 +1,4 @@
-__version_info__ = ('0', '9', '1')
+__version_info__ = ('0', '9', '2')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -31,6 +31,23 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException
 
+
+def clearbrowserdata(_driver):
+    """Clear browserdata for chrome to get rid of cookies and so on
+
+    Args:
+        _driver (class): Chromedriver
+
+    Returns:
+        nothing
+
+    """
+    _driver.get('chrome://settings/clearBrowserData')
+    _wait = WebDriverWait(driver, 10)
+    clear_button = wait.until(ec.element_to_be_clickable((By.CSS_SELECTOR, '* /deep/ #clearBrowsingDataConfirm')))
+    clear_button.click()
+
+
 def _open_gs_and_login(_url, _user, _password, _options, _service):
     """Returns a webdriver :class:'webdriver.Chrome(options=chrome_options, service=service_options)' object
     Will open a browser with options given,
@@ -49,6 +66,7 @@ def _open_gs_and_login(_url, _user, _password, _options, _service):
     """
     # open browser and login
     _driver = webdriver.Chrome(options=_options, service=_service)
+    clearbrowserdata(_driver)
 
     _wait = WebDriverWait(_driver, 20)
     _driver.get(_url)
@@ -71,6 +89,17 @@ def _open_gs_and_login(_url, _user, _password, _options, _service):
     return _driver
 
 def download_chromedriver(version='129.0.6668.100', extract_to='.'):
+    """Download chromedriver in case not already found
+
+    Args:
+        version (str): Version, default is the last tested one
+        extract_to (str): Filepath to extract the downloaded version
+
+    Returns:
+        nothing
+
+    """
+
     # Determine the download URL for the specified version
     download_url = f'https://storage.googleapis.com/chrome-for-testing-public/{version}/win64/chromedriver-win64.zip'
 
@@ -84,6 +113,16 @@ def download_chromedriver(version='129.0.6668.100', extract_to='.'):
     logging.info(f'ChromeDriver {version} downloaded and extracted to {extract_to}')
 
 def download_chrome4testing(version='129.0.6668.100', extract_to='.'):
+    """Download chrome4testing in case not already found
+
+    Args:
+        version (str): Version, default is the last tested one
+        extract_to (str): Filepath to extract the downloaded version
+
+    Returns:
+        nothing
+
+    """
     # Determine the download URL for the specified version
     download_url = f'https://storage.googleapis.com/chrome-for-testing-public/{version}/win64/chrome-win64.zip'
 
@@ -170,10 +209,10 @@ def filename_modification(filestring_downloaded, filestring_whiledownloaded, fil
         logging.debug(f'Filename for Target(modified)   2 :[{filestring_target}]')
         return filestring_downloaded, filestring_whiledownloaded, filestring_target
     except TypeError as _e:
-        logging.exception(f'TypeError Exception Raised - str expected int found -{_e}')
+        logging.error(f'TypeError Exception Raised - str expected int found -exit(99)')
         sys.exit(99)
     except (ValueError, AttributeError) as _e:
-        logging.exception(f'ValueError/AttributeError Exception Raised - {_e}')
+        logging.error(f'ValueError/AttributeError Exception Raised - exit(99)')
         sys.exit(99)
 
 
@@ -485,14 +524,12 @@ def download_edition(jahrdl, ausgabedl, _filestring_download, _filestring_whiled
 
     except TimeoutException as t:
         dl_state = 12
-        logging.exception(f'Browser page load failed;maybe edition does not exist;or very slow load '
-                          f'- timeout exception:{t}')
-
+        logging.error(f'Browser page load failed;maybe edition does not exist;or very slow load '
+                          f'- timeout exception:')
     except Exception as _e:
-        logging.exception(f'Exception:{_e}')
+        logging.error(f'A exception during download occured - exit(99) ')
         driver.quit()
         sys.exit(99)
-
     return dl_state
 
 
@@ -562,6 +599,17 @@ def move_downloaded(_targetfolder, _year, _fn_downloaded, _fn_target, _timeout=3
 
 
 def extract_page(input_pdf, page_number, output_pdf):
+    """Extract a page for printing
+
+    Args:
+        input_pdf (str): Fullpath to input pdf file
+        page_number (str): single page to be extracted
+        output_pdf (str): Fullpath to output pdf file
+
+    Returns:
+        nothing
+
+    """
     # Erstelle ein PdfReader-Objekt
     pdf_reader = PdfReader(input_pdf)
 
@@ -607,6 +655,14 @@ def print_cover(cover_file, page_to_print):
 
 
 def create_webdriver_cover():
+    """Creates a instance for webdriver used during cover download
+
+    Args:
+        nothing
+
+    Returns:
+        _driver (class) : webdriver
+    """
     chrome_driver_path = "chromedriver-win64/chromedriver.exe"
     chrome_service = Service(executable_path=chrome_driver_path)
     chrome_options = Options()
@@ -630,6 +686,7 @@ def create_webdriver_cover():
     my_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"
     chrome_options.add_argument(f"--user-agent={my_user_agent}")
     _driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
+    clearbrowserdata(_driver)
     sleep(5)
     return _driver
 
