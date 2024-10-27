@@ -1,4 +1,4 @@
-__version_info__ = ('0', '9', '2')
+__version_info__ = ('0', '9', '3')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -43,17 +43,20 @@ def clearbrowserdata(_driver):
         nothing
 
     """
-    _driver.get('chrome://settings/clearBrowserData')
-    sleep(1)
-    _wait = WebDriverWait(_driver, 10)
-    actions = ActionChains(_driver)
-    actions.send_keys(4 * (Keys.SHIFT + Keys.TAB))
-    actions.send_keys(6 * Keys.DOWN)
-    actions.send_keys(5 * Keys.TAB)
-    actions.send_keys(6 * Keys.ENTER)
-    actions.perform()
-    logging.info("Browser Cache Data deleted")
-    sleep(3)
+    if user_data[0]['clearbrowseronstart'].lower() == "yes":
+        _driver.get('chrome://settings/clearBrowserData')
+        sleep(1)
+        _wait = WebDriverWait(_driver, 10)
+        actions = ActionChains(_driver)
+        actions.send_keys(4 * (Keys.SHIFT + Keys.TAB))
+        actions.send_keys(6 * Keys.DOWN)
+        actions.send_keys(5 * Keys.TAB)
+        actions.send_keys(6 * Keys.ENTER)
+        actions.perform()
+        logging.info("Browser Cache Data deleted")
+        sleep(3)
+    else:
+        logging.info("Browser Cache Data not deleted")
 
 def _open_gs_and_login(_url, _user, _password, _options, _service):
     """Returns a webdriver :class:'webdriver.Chrome(options=chrome_options, service=service_options)' object
@@ -81,18 +84,36 @@ def _open_gs_and_login(_url, _user, _password, _options, _service):
                  f"try now to log in with user/password [xxx/***]")
     _wait.until(ec.visibility_of_element_located((By.CSS_SELECTOR,'button.btn:nth-child(8)')))
     sleep(2)
-    _driver.find_element(By.ID, 'page-login-inp-username').send_keys(_user)
-    sleep(2)
-    _driver.find_element(By.ID, 'page-login-inp-password').send_keys(_password)
-    _driver.find_element(By.CSS_SELECTOR,'#PageLogin > button').click()
-    sleep(2)
-    try:
-        _driver.find_element(By.XPATH,
-                                     "//*[contains(text(), 'Der Login ist wegen Spamschutzmaßnahmen fehlgeschlagen. Bitte versuche es nochmal. Besteht das Problem weiterhin, kontaktiere bitte unseren Support.')]")
-        logging.error("Looks like Spam protection is in place - try again later - aborting")
-        sys.exit(99)
-    except:
-        logging.info("Login passed -at least no spam message")
+
+    retries=3
+    for ret in range(retries):
+        try:
+            _driver.find_element(By.ID, 'page-login-inp-username').send_keys(_user)
+            sleep(2)
+            _driver.find_element(By.ID, 'page-login-inp-password').send_keys(_password)
+            _driver.find_element(By.CSS_SELECTOR,'#PageLogin > button').click()
+            sleep(2)
+            spam_abort=False
+            spamprotectiontext_actual=""
+            try:
+                spamprotextionelement = _driver.find_element(By.CSS_SELECTOR, "#PageLogin > p")
+                spamprotectiontext_actual = spamprotextionelement.text
+                logging.debug(f"{spamprotectiontext_actual}")
+                spam_abort=True
+            except:
+                logging.info(f"Spamprotection check")
+            if spam_abort:
+                if spamprotectiontext_actual.startswith("Der Login ist wegen Spamschutz"):
+                    logging.error("Spamprotection found retry")
+                else:
+                    logging.error("Something new occurred - report to dev")
+                    sys.exit(99)
+            else:
+                logging.info(f"Spam_abort is {spam_abort}")
+        finally:
+            logging.info("Retry Login")
+        if spam_abort is False:
+            break
     return _driver
 
 def download_chromedriver(version='129.0.6668.100', extract_to='.'):
@@ -695,7 +716,6 @@ def create_webdriver_cover():
     _driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
     sleep(5)
     clearbrowserdata(_driver)
-    sleep(5)
     return _driver
 
 
@@ -703,7 +723,7 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     key_list_gsjson = ['log_level', 'downloadtarget', 'edition2d', 'downloadtimeout', 'abortlimit',
                        'filenamepattern_intarget', 'filenamepattern_fromserver', 'filenamepattern_fromserver',
-                       'latestdownload', 'browser_display_on_latest', 'skip_editions']
+                       'latestdownload', 'browser_display_on_latest', 'skip_editions', 'clearbrowseronstart']
 
     # read config from json file
     json_config_file = 'gs.json'
