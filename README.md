@@ -43,7 +43,7 @@ Video shows Version 0.1 - current solution works similar, with a bit different l
 The video displays what the start of the program would look like, than the start of the download. In this sample there are already some previous downloaded file. It will skip 1998/1 to 1998/6, than it will download 1998/7. Skip 8/1998 as also previously downloaded. Download 9/1998 and skip again 10/1998. The job was stopped for demo after 1/1999 and finally a tree is displayed. This is what the years should look like in the very end.
 
 ### Exclusion
-* GS added a spam protection in late 2024. I tried to at least catch the error and skip download. 
+* GS added a spam protection in late 2024. V0.9.3 is aware of the protection and re-tries the login 3 times. 
 * The edition 2017/10 was a exception until May 
   11th 2021: Caused by an error in "Blättercatalog"  
 To prevent a error the edition is listed in [gs.json](#edit-gsjson) in key "skip_editions"  
@@ -173,23 +173,25 @@ This is a not working sample ! - Get the real one from code or release page.
         "cover_page_print": "Yes",
         "cover_page_number": 1,
         "browser_display_on_latest": "no",
-        "skip_editions": []
+        "skip_editions": [],
+        "clearbrowseronstart": "yes"
     }
 ]
 ```
-| Name          | value allowed        | Remark|introduced|
-|:---|:---:|:---|:---:|
-| log_level      | [debug/info/warning/error/critical]   | The log level just in case needed - info is default, debug is fallback | v0.5|
-| downloadtarget | string   | please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive" will look like "c:\\\\download\\\\Gamestar-archive". | v0.1|
-| downloadtargetcovers | string   | please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive\\covers" will look like "c:\\\\download\\\\Gamestar-archive\\\\covers". | v0.7|
-| edition2d | [Yes/No] | "No" will use the edition from the server like 1,2,3,4,5; "Yes" will create edition names like "01,02,03,04,05..." | v0.2|
-| downloadtimeout | int | Time in seconds the download wait for a download before trying to download the next edition. This is a max timer, in case the edition is completed before that time it will not wait until the max time. Currently only successful downloads will be moved to target | v0.1|
-| abortlimit | int | default 2; In case a "-year" run is selected and 'abortlimit' edition in sequence are not found the run will be aborted. A new success after a failed download will reset the counter.   | v0.5.6|
-| browser_display_on_latest | [Yes/No]  | In case the commandline option --latest or -l thi soption allow a hidden browser on value "no", "yes" will display the browser also on this commandline option  | v0.5|
-| latestdownload | list] | in case the commandline option --latest/-l is used this will be updated with the latest downloaded edition, so the next run (month) will start from that edition the copy; see ["--latest"](#--latest)  | v0.5|
-| latestdownload_cover | list] | in case the commandline option --coverlatest/-cl is used this will be updated with the latest downloaded cover, so the next run (month) will start from that edition the copy; see ["--coverlatest"](#--coverlatest)  | v0.7|
-| cover_page_print | [Yes/No]   | "Yes" will print the cover directly in case --coverlatest/-cl is used to default printer - with current default settings| v0.7|
-| cover_page_number | int   | The pdf contains multiple formats, 1 might by the DVD box layout, --coverlatest/-cl will print this page   | v0.7|
+| Name          |            value allowed            | Remark                                                                                                                                                                                                                                                               | introduced |
+|:---|:-----------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----------:|
+| log_level      | [debug/info/warning/error/critical] | The log level just in case needed - info is default, debug is fallback                                                                                                                                                                                               |    v0.5    |
+| downloadtarget |               string                | please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive" will look like "c:\\\\download\\\\Gamestar-archive".                                                                                                            |    v0.1    |
+| downloadtargetcovers |               string                | please mask all "\\" with a additional leading "\\", so a path like "c:\\download\\Gamestar-archive\\covers" will look like "c:\\\\download\\\\Gamestar-archive\\\\covers".                                                                                          |    v0.7    |
+| edition2d |              [Yes/No]               | "No" will use the edition from the server like 1,2,3,4,5; "Yes" will create edition names like "01,02,03,04,05..."                                                                                                                                                   |    v0.2    |
+| downloadtimeout |                 int                 | Time in seconds the download wait for a download before trying to download the next edition. This is a max timer, in case the edition is completed before that time it will not wait until the max time. Currently only successful downloads will be moved to target |    v0.1    |
+| abortlimit |                 int                 | default 2; In case a "-year" run is selected and 'abortlimit' edition in sequence are not found the run will be aborted. A new success after a failed download will reset the counter.                                                                               |   v0.5.6   |
+| browser_display_on_latest |              [Yes/No]               | In case the commandline option --latest or -l thi soption allow a hidden browser on value "no", "yes" will display the browser also on this commandline option                                                                                                       |    v0.5    |
+| latestdownload |                list]                | in case the commandline option --latest/-l is used this will be updated with the latest downloaded edition, so the next run (month) will start from that edition the copy; see ["--latest"](#--latest)                                                               |    v0.5    |
+| latestdownload_cover |                list]                | in case the commandline option --coverlatest/-cl is used this will be updated with the latest downloaded cover, so the next run (month) will start from that edition the copy; see ["--coverlatest"](#--coverlatest)                                                 |    v0.7    |
+| cover_page_print |              [Yes/No]               | "Yes" will print the cover directly in case --coverlatest/-cl is used to default printer - with current default settings                                                                                                                                             |    v0.7    |
+| cover_page_number |                 int                 | The pdf contains multiple formats, 1 might by the DVD box layout, --coverlatest/-cl will print this page                                                                                                                                                             |    v0.7    |
+| clearbrowseronstart |                  [Yes/No]                   | Not realy needed for spamprotection,but kept. will delete cookies from test browser                                                                                                                                                                                  |  v0.9.3   |
 
 
 ### Filenamepattern in gs.json
@@ -222,7 +224,7 @@ Currently, (May 2021) there should be only one edition (2017/10)
 
 ## Run 
 ### commandline argument
-Attention : v0.9.0 and later chaged the commandline 
+Attention : v0.9.0 and later changed the commandline 
 ```
 usage: gsArchivPDFDownloader.py [-h] [-e] [-c] [-l] [-f] [-y YEAR] [-r RANGE] [-o] [-mc] [-v]
 
@@ -291,7 +293,7 @@ python gsArchivPDFDownloader.py --cover --full
 ```
 
 Now the job will start, it will check and create the "downloadtarget" folder.
-It will open a firefox/geckodriver browser and than tries in a loop to download all covers starting from 2000/01 to 
+It will open a firefox/geckodriver browser and then tries in a loop to download all covers starting from 2000/01 to 
 the current year. Than it will save the file. After the download is complete (no *.part is seen anymore), the new file is moved to a sub folder of the year.
 In other words the structure of the sample will look like
 ```
@@ -340,7 +342,7 @@ in case the number is 2 and the flow is like this: success - fail - success > th
 
 
 #### --latest
-In case you want to repeat the download on a monthly base after you downloaded all (with the initial function), this is the option for you.
+In case you want to repeat the download on a monthly basis after you downloaded all (with the initial function), this is the option for you.
 ```
 python gsArchivPDFDownloader.py --edition --latest
 ```
@@ -357,7 +359,7 @@ add the absolute path to the python.exe in program field, add the "--latest" as 
 set the "start in folder" to the folder the gsArchivPDFDownloader.py is in.
 ```
 
-In case you want to repeat the download of a cover on a monthly base after you downloaded all (with the initial 
+In case you want to repeat the download of a cover on a monthly basis after you downloaded all (with the initial 
 function --cover --full), this is the option for you.
 ```
 python gsArchivPDFDownloader.py --coverlatest
