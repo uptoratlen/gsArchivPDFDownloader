@@ -1,4 +1,4 @@
-__version_info__ = ('0', '9', '3')
+__version_info__ = ('0', '9', '3', '1')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -84,7 +84,6 @@ def _open_gs_and_login(_url, _user, _password, _options, _service):
                  f"try now to log in with user/password [xxx/***]")
     _wait.until(ec.visibility_of_element_located((By.CSS_SELECTOR,'button.btn:nth-child(8)')))
     sleep(2)
-
     retries=3
     for ret in range(retries):
         try:
@@ -101,19 +100,21 @@ def _open_gs_and_login(_url, _user, _password, _options, _service):
                 logging.debug(f"{spamprotectiontext_actual}")
                 spam_abort=True
             except:
-                logging.info(f"Spamprotection check")
+                logging.info(f"Spamprotection check - Spam Msg element not found - good")
             if spam_abort:
                 if spamprotectiontext_actual.startswith("Der Login ist wegen Spamschutz"):
-                    logging.error("Spamprotection found retry")
+                    logging.error("Spamprotection message found - starts with expected text")
                 else:
-                    logging.error("Something new occurred - report to dev")
+                    logging.error("Spamprotection message found, but different text. Something new occurred - report to developer")
                     sys.exit(99)
-            else:
-                logging.info(f"Spam_abort is {spam_abort}")
+            logging.debug(f"Spam_abort is {spam_abort}")
         finally:
-            logging.info("Retry Login")
+            logging.debug("Try: Retry Login")
         if spam_abort is False:
+            logging.info(f"Spamprotection check - done - result: OK")
             break
+        logging.debug(f"Spamprotection check - done - result: FAIL retry login {ret+1} of {retries}")
+
     return _driver
 
 def download_chromedriver(version='129.0.6668.100', extract_to='.'):
@@ -278,7 +279,7 @@ def download_range(_range_start_year, _range_start_month, _range_end_year, _rang
                          f"[{_abort_flag}/{user_data[0]['abortlimit']}]")
 
         if _abort_flag >= user_data[0]['abortlimit']:
-            logging.info(f'The abort limitcounter reached the maxmium allwed and will now abort the run')
+            logging.info(f'The abort limit counter reached the maximum allowed and will now abort the run')
             break
 
         _ausgabe = str(int(_ausgabe) + 1)
@@ -333,7 +334,7 @@ def download_range_cover(_driver,_range_start_year, _range_start_month, _range_e
                          f"[{_abort_flag}/{user_data[0]['abortlimit']}]")
 
         if _abort_flag >= user_data[0]['abortlimit']:
-            logging.info(f'The abort limitcounter reached the maxmium allwed and will now abort the run')
+            logging.info(f'The abort limit counter reached the maximum allowed and will now abort the run')
             break
 
         _ausgabe = str(int(_ausgabe) + 1)
