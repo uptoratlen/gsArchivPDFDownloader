@@ -87,6 +87,7 @@ def _open_gs_and_login(_url, _user, _password, _options, _service):
     retries=3
     for ret in range(retries):
         try:
+            logging.debug(f"Login to GSPlus")
             _driver.find_element(By.ID, 'page-login-inp-username').send_keys(_user)
             sleep(2)
             _driver.find_element(By.ID, 'page-login-inp-password').send_keys(_password)
@@ -106,15 +107,21 @@ def _open_gs_and_login(_url, _user, _password, _options, _service):
                     logging.error("Spamprotection message found - starts with expected text")
                 else:
                     logging.error("Spamprotection message found, but different text. Something new occurred - report to developer")
-                    sys.exit(99)
+                    logging.error(f"{spamprotectiontext_actual}")
+                    _driver.quit()
+                    sys.exit(96)
             logging.debug(f"Spam_abort is {spam_abort}")
         finally:
             logging.debug("Try: Retry Login")
         if spam_abort is False:
             logging.info(f"Spamprotection check - done - result: OK")
             break
-        logging.debug(f"Spamprotection check - done - result: FAIL retry login {ret+1} of {retries}")
-
+        logging.info(f"Spamprotection check - done - result: FAIL retry login {ret+1} of {retries}")
+    if spam_abort is True:
+        logging.error(f"Even after {retries} Retries - still the SPam message could be found on page - aborting")
+        logging.error(f"Try again later?")
+        _driver.quit()
+        sys.exit(96)
     return _driver
 
 def download_chromedriver(version='129.0.6668.100', extract_to='.'):
