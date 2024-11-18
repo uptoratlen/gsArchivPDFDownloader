@@ -1,4 +1,4 @@
-__version_info__ = ('0', '9', '3', '1')
+__version_info__ = ('0', '9', '3', '2')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -1019,8 +1019,12 @@ if __name__ == '__main__':
         range_start_year = "1997"
         range_start_month = "9"
         range_end_year = str(datetime.now().year)
-        range_end_month = str(datetime.now().month)
-        logging.debug(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
+        range_end_month = str(datetime.now().month + 1)
+        if range_end_month == "13":
+            range_end_month = "1"
+            range_end_year = str(datetime.now().year+1)
+
+        logging.info(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
         _jahr = range_start_year
         _ausgabe = range_start_month
         _continue_check = True
@@ -1036,10 +1040,10 @@ if __name__ == '__main__':
             if os.path.exists(f"{user_data[0]['downloadtarget']}/{_jahr}/"
                               f"{_filenamepattern_local}"):
                 logging.debug(f"Edition exist [{user_data[0]['downloadtarget']}/"
-                                 f"{_jahr}/{_filenamepattern_local}.pdf]")
+                                 f"{_jahr}/{_filenamepattern_local}]")
             else:
-                logging.info("Editon not found [{user_data[0]['downloadtarget']}/"
-                                 f"{_jahr}/{_filenamepattern_local}.pdf]")
+                logging.info(f"Editon not found [{user_data[0]['downloadtarget']}/"
+                                 f"{_jahr}/{_filenamepattern_local}]")
                 error_list.append(f'{_jahr}/{_ausgabe}')
 
             _ausgabe = str(int(_ausgabe) + 1)
@@ -1056,7 +1060,7 @@ if __name__ == '__main__':
             else:
                 logging.debug('Stop latest download loop - max reached.')
                 if len(error_list) > 0:
-                    logging.warning(f'Full list of missing editions')
+                    logging.warning(f'Full list of missing editions (last one may be a guess)')
                     logging.warning(f'{error_list}')
                 _continue_check = False
 
@@ -1065,8 +1069,11 @@ if __name__ == '__main__':
         range_start_year = "2015"
         range_start_month = "1"
         range_end_year = str(datetime.now().year)
-        range_end_month = str(datetime.now().month)
-        logging.debug(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
+        range_end_month = str(datetime.now().month + 1)
+        if range_start_month == "13":
+            range_start_month = "1"
+            range_end_year = str(datetime.now().year+1)
+        logging.info(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
         _jahr = range_start_year
         _ausgabe = range_start_month
         _continue_check = True
@@ -1077,10 +1084,10 @@ if __name__ == '__main__':
             if os.path.exists(f"{user_data[0]['downloadtargetcovers']}/{_jahr}/"
                               f"{filename_cover_intarget_sub}.pdf"):
                 logging.debug(f"Cover exist [{user_data[0]['downloadtargetcovers']}/"
-                                 f"{_jahr}/{filename_cover_intarget_sub}.pdf]")
+                                 f"{_jahr}/{filename_cover_intarget_sub}]")
             else:
-                logging.info("Cover not found [{user_data[0]['downloadtargetcovers']}/"
-                                 f"{_jahr}/{filename_cover_intarget_sub}.pdf]")
+                logging.info(f"Cover not found [{user_data[0]['downloadtargetcovers']}/"
+                                 f"{_jahr}/{filename_cover_intarget_sub}]")
                 error_list.append(f'{_jahr}/{_ausgabe}')
 
             _ausgabe = str(int(_ausgabe) + 1)
@@ -1097,7 +1104,7 @@ if __name__ == '__main__':
             else:
                 logging.debug('Stop latest download loop - max reached.')
                 if len(error_list) > 0:
-                    logging.warning(f'Full list of missing covers')
+                    logging.warning(f'Full list of missing covers (last one may be a guess)')
                     logging.warning(f'{error_list}')
                 _continue_check = False
 
