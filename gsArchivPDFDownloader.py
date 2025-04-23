@@ -1,4 +1,4 @@
-__version_info__ = ('0', '9', '3', '2')
+__version_info__ = ('0', '9', '4', '0')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -21,10 +21,9 @@ import tempfile
 import win32api
 from PyPDF2 import PdfReader, PdfWriter
 
+import undetected_chromedriver as uc
 from selenium import webdriver
-from selenium.webdriver import Keys
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -32,34 +31,8 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException
 
-
-def clearbrowserdata(_driver):
-    """Clear browserdata for chrome to get rid of cookies and so on
-    With stupid keys, cause none of the By worked as expected, again 129?
-    Args:
-        _driver (class): Chromedriver
-
-    Returns:
-        nothing
-
-    """
-    if user_data[0]['clearbrowseronstart'].lower() == "yes":
-        _driver.get('chrome://settings/clearBrowserData')
-        sleep(1)
-        _wait = WebDriverWait(_driver, 10)
-        actions = ActionChains(_driver)
-        actions.send_keys(4 * (Keys.SHIFT + Keys.TAB))
-        actions.send_keys(6 * Keys.DOWN)
-        actions.send_keys(5 * Keys.TAB)
-        actions.send_keys(6 * Keys.ENTER)
-        actions.perform()
-        logging.info("Browser Cache Data deleted")
-        sleep(3)
-    else:
-        logging.info("Browser Cache Data not deleted")
-
-def _open_gs_and_login(_url, _user, _password, _options, _service):
-    """Returns a webdriver :class:'webdriver.Chrome(options=chrome_options, service=service_options)' object
+def _open_gs_and_login(_url, _user, _password, _options):
+    """Returns a webdriver :class:'webdriver.Chrome(options=chrome_options)' object
     Will open a browser with options given,
     login to page with user and password
 
@@ -68,87 +41,33 @@ def _open_gs_and_login(_url, _user, _password, _options, _service):
         _user (str): Username from credentials
         _password (str): Password from credentials
         _options (class): Chrome options
-        _service (class): Chrome Service
 
     Returns:
         class: webdriver
 
     """
-    # open browser and login
-    _driver = webdriver.Chrome(options=_options, service=_service)
-    clearbrowserdata(_driver)
-
-    _wait = WebDriverWait(_driver, 20)
+    _driver = uc.Chrome(options=_options)
+    _driver.set_window_size(1024, 768)
     _driver.get(_url)
     logging.info(f"Browser now started with URL:{_url} - "
-                 f"try now to log in with user/password [xxx/***]")
-    _wait.until(ec.visibility_of_element_located((By.CSS_SELECTOR,'button.btn:nth-child(8)')))
+                 f"Cloudflare wait")
+    #Bestoption? Iframe not detected in 2025/04
+    sleep(30)
+    _wait = WebDriverWait(_driver, 30)
+    _wait.until(ec.visibility_of_element_located((By.CSS_SELECTOR,'#PageLogin > button')))
+
+    # take a screenshot of the current page and save it
+    logging.info(f"Take a screenshot for debug info")
+    _driver.save_screenshot("cloudflare-challenge.png")
+
+    _driver.find_element(By.ID, 'page-login-inp-username').send_keys(_user)
     sleep(2)
-    retries=3
-    for ret in range(retries):
-        try:
-            logging.debug(f"Login to GSPlus")
-            _driver.find_element(By.ID, 'page-login-inp-username').send_keys(_user)
-            sleep(2)
-            _driver.find_element(By.ID, 'page-login-inp-password').send_keys(_password)
-            _driver.find_element(By.CSS_SELECTOR,'#PageLogin > button').click()
-            sleep(2)
-            spam_abort=False
-            spamprotectiontext_actual=""
-            try:
-                spamprotextionelement = _driver.find_element(By.CSS_SELECTOR, "#PageLogin > p")
-                spamprotectiontext_actual = spamprotextionelement.text
-                logging.debug(f"{spamprotectiontext_actual}")
-                spam_abort=True
-            except:
-                logging.info(f"Spamprotection check - Spam Msg element not found - good")
-            if spam_abort:
-                if spamprotectiontext_actual.startswith("Der Login ist wegen Spamschutz"):
-                    logging.error("Spamprotection message found - starts with expected text")
-                else:
-                    logging.error("Spamprotection message found, but different text. Something new occurred - report to developer")
-                    logging.error(f"{spamprotectiontext_actual}")
-                    _driver.quit()
-                    sys.exit(96)
-            logging.debug(f"Spam_abort is {spam_abort}")
-        finally:
-            logging.debug("Try: Retry Login")
-        if spam_abort is False:
-            logging.info(f"Spamprotection check - done - result: OK")
-            break
-        logging.info(f"Spamprotection check - done - result: FAIL retry login {ret+1} of {retries}")
-    if spam_abort is True:
-        logging.error(f"Even after {retries} Retries - still the SPam message could be found on page - aborting")
-        logging.error(f"Try again later?")
-        _driver.quit()
-        sys.exit(96)
+    _driver.find_element(By.ID, 'page-login-inp-password').send_keys(_password)
+    _driver.find_element(By.CSS_SELECTOR, '#PageLogin > button').click()
+    sleep(2)
     return _driver
 
-def download_chromedriver(version='129.0.6668.100', extract_to='.'):
-    """Download chromedriver in case not already found
-
-    Args:
-        version (str): Version, default is the last tested one
-        extract_to (str): Filepath to extract the downloaded version
-
-    Returns:
-        nothing
-
-    """
-
-    # Determine the download URL for the specified version
-    download_url = f'https://storage.googleapis.com/chrome-for-testing-public/{version}/win64/chromedriver-win64.zip'
-
-    # Download the ChromeDriver zip file
-    response = requests.get(download_url)
-    response.raise_for_status()  # Check for request errors
-
-    # Extract the zip file to the specified folder
-    with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
-        zip_ref.extractall(extract_to)
-    logging.info(f'ChromeDriver {version} downloaded and extracted to {extract_to}')
-
-def download_chrome4testing(version='129.0.6668.100', extract_to='.'):
+def download_chrome4testing(version='135.0.7049.97', extract_to='.'):
     """Download chrome4testing in case not already found
 
     Args:
@@ -161,8 +80,6 @@ def download_chrome4testing(version='129.0.6668.100', extract_to='.'):
     """
     # Determine the download URL for the specified version
     download_url = f'https://storage.googleapis.com/chrome-for-testing-public/{version}/win64/chrome-win64.zip'
-
-    # Download the ChromeDriver zip file
     response = requests.get(download_url)
     response.raise_for_status()  # Check for request errors
 
@@ -170,7 +87,7 @@ def download_chrome4testing(version='129.0.6668.100', extract_to='.'):
     with zipfile.ZipFile(io.BytesIO(response.content)) as zip_ref:
         zip_ref.extractall(extract_to)
 
-    logging.info(f'ChromeDriver {version} downloaded and extracted to {extract_to}')
+    logging.info(f'Chrome4Testing {version} downloaded and extracted to {extract_to}')
 
 def _hlp_display_type(varx):
     """
@@ -201,6 +118,8 @@ def json_config_check(_json_config, _key_list):
     for key_check in _key_list:
         if key_check not in _json_config.keys():
             logging.error(f"Json file looks incomplete - key:'{key_check}' is missing")
+            if key_check == 'browser_visible':
+                logging.error(f"Since 0.9.4 'browser_display_on_latest' is named 'browser_visible', rename it manually.")
             sys.exit(99)
     return True
 
@@ -646,17 +565,10 @@ def extract_page(input_pdf, page_number, output_pdf):
         nothing
 
     """
-    # Erstelle ein PdfReader-Objekt
     pdf_reader = PdfReader(input_pdf)
-
-    # Erstelle ein PdfWriter-Objekt
     pdf_writer = PdfWriter()
-
-    # Hole die angegebene Seite und füge sie dem PdfWriter hinzu
     page = pdf_reader.pages[page_number]
     pdf_writer.add_page(page)
-
-    # Schreibe die Seite in eine neue PDF-Datei
     with open(output_pdf, 'wb') as output_file:
         pdf_writer.write(output_file)
 
@@ -694,13 +606,10 @@ def create_webdriver_cover():
     """Creates a instance for webdriver used during cover download
 
     Args:
-        nothing
 
     Returns:
         _driver (class) : webdriver
     """
-    chrome_driver_path = "chromedriver-win64/chromedriver.exe"
-    chrome_service = Service(executable_path=chrome_driver_path)
     chrome_options = Options()
     chrome_options.binary_location = "chrome-win64/chrome.exe"
     chrome_options.add_experimental_option('prefs', {
@@ -711,19 +620,18 @@ def create_webdriver_cover():
         "plugins.always_open_pdf_externally": True,  # Disable PDF viewer
         "directory_upgrade": True
     })
+    chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+
     chrome_options.add_argument("--start-minimized")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--log-level=1")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
 
-    if user_data[0]['browser_display_on_latest'].lower() == "no":
+    if user_data[0]['browser_visible'].lower() == "no":
         chrome_options.add_argument("--headless=new")
-        # Needed for Chromedriver 129
-        chrome_options.add_argument("--window-position=-2400,-2400")
-    my_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"
-    chrome_options.add_argument(f"--user-agent={my_user_agent}")
-    _driver = webdriver.Chrome(service=chrome_service, options=chrome_options)
+    _driver = webdriver.Chrome(options=chrome_options)
     sleep(5)
-    clearbrowserdata(_driver)
     return _driver
 
 
@@ -731,7 +639,7 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     key_list_gsjson = ['log_level', 'downloadtarget', 'edition2d', 'downloadtimeout', 'abortlimit',
                        'filenamepattern_intarget', 'filenamepattern_fromserver', 'filenamepattern_fromserver',
-                       'latestdownload', 'browser_display_on_latest', 'skip_editions', 'clearbrowseronstart']
+                       'latestdownload', 'browser_visible', 'skip_editions']
 
     # read config from json file
     json_config_file = 'gs.json'
@@ -831,44 +739,27 @@ if __name__ == '__main__':
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     binarychrome = "chrome-win64/chrome.exe"
-    binarychromedriver = "chromedriver-win64/chromedriver.exe"
 
     # Check if the binarychrome exists
     if os.path.isfile(binarychrome):
         logging.info(f'Chrome4Test {binarychrome} exists.')
     else:
         logging.warning(f'Chrome4Test {binarychrome} does not exist.')
-        download_chrome4testing(version='129.0.6668.100', extract_to=script_dir)
+        download_chrome4testing(version='135.0.7049.97', extract_to=script_dir)
 
-    if os.path.isfile(binarychromedriver):
-        logging.info(f'ChromeDriver {binarychromedriver} exists.')
-    else:
-        logging.warning(f'ChromeDriver {binarychromedriver} does not exist.')
-        download_chromedriver(version='129.0.6668.100', extract_to=script_dir)
-
-    chrome_driver_path = "chromedriver-win64/chromedriver.exe"
-    chrome_service = Service(executable_path=chrome_driver_path)
-    chrome_options = Options()
+    chrome_options = uc.ChromeOptions()
     chrome_options.binary_location = "chrome-win64/chrome.exe"
     chrome_options.add_experimental_option('prefs', {
         "profile.default_content_settings.popups": 0,
-        # Change this to your desired download directory
         "download.default_directory": f"{user_data[0]['downloadtarget']}",
         "download.prompt_for_download": False,  # Disable download prompt
         "plugins.always_open_pdf_externally": True,  # Disable PDF viewer
-        "directory_upgrade": True
-    })
-    chrome_options.add_argument("--start-minimized")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
+        "directory_upgrade": True,
+     })
 
-    if user_data[0]['browser_display_on_latest'].lower() == "no":
-        chrome_options.add_argument("--headless=new")
-        #Needed for Chromedriver 129
-        chrome_options.add_argument("--window-position=-2400,-2400")
-    my_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"
-    chrome_options.add_argument(f"--user-agent={my_user_agent}")
-
+    #if user_data[0]['browser_visible'].lower() == "no":
+    #    chrome_options.add_argument("--headless=new")
+    logging.info(f"since cloudflare headless(invisible) does not work anymore")
 
     logging.info(f"Download location:{user_data[0]['downloadtarget']}")
     logging.info(f"filenamepattern_fromserver:{user_data[0]['filenamepattern_fromserver']}")
@@ -881,7 +772,7 @@ if __name__ == '__main__':
     if args.edition and args.year:
         logging.info('Run Type: Edition Year')
         driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
-                                    chrome_options, chrome_service)
+                                    chrome_options)
         year = args.year
         abort_flag = 0
         for edition in range(1, 14):
@@ -925,7 +816,7 @@ if __name__ == '__main__':
         ausgabe = str(int(ausgabe)+1)
         continue_download = True
         driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
-                                    chrome_options, chrome_service)
+                                    chrome_options)
         while continue_download:
             logging.info(f"Trying now to download the latest version for (Editions/Year) (curMonth/curYear)=>"
                          f"({ausgabe}/{jahr}) ({current_month}/{current_year})")
@@ -974,7 +865,7 @@ if __name__ == '__main__':
 
         logging.debug(f"The range is from {range_start_month}/{range_start_year} to {range_end_month}/{range_end_year}")
         driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
-                                    chrome_options, chrome_service)
+                                    chrome_options)
         download_range(range_start_year, range_start_month, range_end_year, range_end_month)
 
     elif args.edition and args.range:
@@ -995,7 +886,7 @@ if __name__ == '__main__':
             logging.error('Range end is older than start.')
             sys.exit(95)
         driver = _open_gs_and_login(url_login, user_credential[0]['user'], user_credential[0]['password'],
-                                    chrome_options, chrome_service)
+                                    chrome_options)
         download_range(range_start_year, range_start_month, range_end_year, range_end_month)
     elif args.cover and args.full:
         logging.info('Run Type: Covers Full')
