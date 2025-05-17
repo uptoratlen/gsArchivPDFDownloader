@@ -1,4 +1,4 @@
-__version_info__ = ('0', '9', '4', '0')
+__version_info__ = ('0', '9', '4', '1')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -66,6 +66,56 @@ def _open_gs_and_login(_url, _user, _password, _options):
     _driver.find_element(By.CSS_SELECTOR, '#PageLogin > button').click()
     sleep(2)
     return _driver
+
+def check_chrome4testing(extract_to='.', chromepath='chrome-win64/chrome.exe'):
+    # Check if the binarychrome exists
+    if os.path.isfile(chromepath):
+        logging.info(f'Chrome4Test {binarychrome} exists.')
+        local_version = get_chrome4testing_local_version(chromepath)
+        latest_version = get_chrome4testing_latest_version()
+
+        logging.info(f'Local Version:{local_version} .')
+        if local_version and latest_version:
+            if local_version != latest_version:
+                logging.info(f"Updating Chrome for Testing from {local_version} to {latest_version}...")
+                shutil.rmtree('chrome-win64')
+                download_chrome4testing(version=latest_version, extract_to=script_dir)
+            else:
+                logging.info("Chrome for Testing is already up to date.")
+        else:
+            logging.info("Could not determine versions. Check your installation and internet connection.")
+    else:
+        logging.warning(f'Chrome4Test {binarychrome} does not exist.')
+        latest_version = get_chrome4testing_latest_version()
+        logging.info(f'Chrome4Test newest online:{latest_version} .')
+        download_chrome4testing(version=latest_version, extract_to=script_dir)
+
+def get_chrome4testing_local_version(chromepath):
+    """Get installed Chrome version using Windows API."""
+    try:
+        info = win32api.GetFileVersionInfo(script_dir +"\\"+ chromepath, "\\")
+        ms_ver = info['FileVersionMS']
+        ls_ver = info['FileVersionLS']
+        version = f"{ms_ver >> 16}.{ms_ver & 0xFFFF}.{ls_ver >> 16}.{ls_ver & 0xFFFF}"
+        return version
+    except Exception as e:
+        print(f"Error retrieving version: {e}")
+        return None
+
+
+def get_chrome4testing_latest_version():
+    """Fetch the latest stable Chrome version from the API."""
+    url = "https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_STABLE"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        latest_version = response.text.strip()
+        return latest_version
+    else:
+        print(f"Failed to retrieve version. Status code: {response.status_code}")
+        exit(99)
+        return None
+
 
 def download_chrome4testing(version='135.0.7049.97', extract_to='.'):
     """Download chrome4testing in case not already found
@@ -739,13 +789,8 @@ if __name__ == '__main__':
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     binarychrome = "chrome-win64/chrome.exe"
-
-    # Check if the binarychrome exists
-    if os.path.isfile(binarychrome):
-        logging.info(f'Chrome4Test {binarychrome} exists.')
-    else:
-        logging.warning(f'Chrome4Test {binarychrome} does not exist.')
-        download_chrome4testing(version='135.0.7049.97', extract_to=script_dir)
+    shutil.rmtree('chrome-win64')
+    check_chrome4testing(extract_to=script_dir, chromepath=binarychrome)
 
     chrome_options = uc.ChromeOptions()
     chrome_options.binary_location = "chrome-win64/chrome.exe"
