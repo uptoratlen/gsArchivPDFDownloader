@@ -35,6 +35,7 @@ open all editions from 1997/9 to 2021/3 and download them to a selectable folder
 Info: Important change - since 0.5.6 a new gs_credential.json is used to seperate credentials from other settings
 Info: Important change - since 0.9.4 Headless is not supported anymore
 Info: Important Info - since 0.9.4 GS uses Cloudflare to check robots...
+Info: Printing Nightmare - Version 0.9.4.2 uses now SumatraPDF ( https://www.sumatrapdfreader.org )
 ```
 Here is the link to the GS forum: https://www.gamestar.de/xenforo/threads/schon-mal-alle-hefte-aus-dem-plus-archiv-geladen-wenn-nein-dann.470604/
 
@@ -62,7 +63,7 @@ This is caused by a faulty PDF, I'm no expert on PDFs, but it looks like a font 
 The gsArchivPDFDownloader obviously was created in Python with Selenium and Chrome4Testing.
 [Chrome4testing](https://googlechromelabs.github.io/chrome-for-testing/)
 
-Up to 0.9.0 Firefox and Geckodriver was used.
+Up to 0.9.0 Firefox and Geckodriver was used. Later Versions use Chrome (testdriver)
 
 For users with less experience, basically what it does:
 Python opens a chrome for testing instance (so your system browser does not get used) by the webdriver chromedriver (chromedriver is the link between Selenium and the chrome for testing browser), and then it simulates browser actions like a user does. Selenium is widely used to automate tests of web applications.
@@ -70,15 +71,16 @@ Python opens a chrome for testing instance (so your system browser does not get 
 As I expect that the webpage may be altered by some time, I guess later the automation will fail. The program is to some extent configurable for this case. 
 First use (env)
 ```
-* The job ran successful with webpages at 23.04.2025.
+* The job ran successful with webpages at 19.12.2025.
 * Python 3.10 
 * Selenium was version 4.31.0
 * requests 2.32.3
 * pypdf2 3.0.1
 * pywin32 307
-* Chromedriver 135.0.7049.97
+* Chromedriver 143.0.7499.169
 * undetected chromedriver 3.5.5
-* hosting OS was Windows 11 (24H2)
+* hosting OS was Windows 11 (25H2)
+* SumatraPDF Portable 3.5.2
 ```
 
 ## Setup
@@ -116,6 +118,11 @@ python.exe -m pip install --upgrade pip
 ```
 python.exe -m pip install selenium==4.31.0 pypdf2==3.0.1 pywin32==307 requests==2.32.3 undetected_chromedriver==3.5.5
 ```
+* Download SumatraPDF (Portable) & Extract & Rename
+Download from https://www.sumatrapdfreader.org/downloadafter the 64bit Portable version and extract the .EXE to folder of .py file
+Example: Download SumatraPDF-3.5.2-64.zip -> extract SumatraPDF-3.5.2-64.exe -> Rename to SumatraPDF.exe
+
+
 * Get gsArchivPDFDownloader.py and gs.json from this repository  
 Use one of the two options  
   - Go to "releases" and download the last release published as ZIP
@@ -414,14 +421,14 @@ Not sure how much this script is used, but as long as I will use it I will updat
 * Since 2024, GS added spam protection on the login - so do not extend the script.
 
 * You mixed German and English in the logging?  
-  Yes, as I said it was more a one timer. In case I got some time I may convert all to one language.
+  Yes, as I said, it was more a one timer. In case I got some time, I may convert all to one language.
 
 * One timer? In version 0.x ? You cheating liar....  
   I need to confess, I added some nice features after my initial use...for others...so it's ok?
   
-* Printing does not work for me.
-  Since 0.9 it is pretty straight forward. Before it was a mess. On the other hand, rage against the printer? Give it 
-  a second try with versions later 0.9
+* Printing does not work for me. (Nightmare)
+  Since 0.9.4.2 it is pretty straight forward. Before it was a mess, I thought I solved it, but then Firefox my default PDF app changed something.
+  On the other hand, rage against the printer? Give it a second try with versions later 0.9.4.2
 
 
 

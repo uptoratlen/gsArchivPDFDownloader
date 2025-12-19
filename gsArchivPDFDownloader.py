@@ -1,4 +1,4 @@
-__version_info__ = ('0', '9', '4', '1')
+__version_info__ = ('0', '9', '4', '2')
 __version__ = '.'.join(__version_info__)
 
 import argparse
@@ -13,12 +13,14 @@ import requests
 import zipfile
 import os
 import io
+import subprocess
 
 import logging
 from logging.handlers import RotatingFileHandler
 
 import tempfile
 import win32api
+import win32print
 from PyPDF2 import PdfReader, PdfWriter
 
 import undetected_chromedriver as uc
@@ -57,8 +59,8 @@ def _open_gs_and_login(_url, _user, _password, _options):
     _wait.until(ec.visibility_of_element_located((By.CSS_SELECTOR,'#PageLogin > button')))
 
     # take a screenshot of the current page and save it
-    logging.info(f"Take a screenshot for debug info")
-    _driver.save_screenshot("cloudflare-challenge.png")
+    #logging.info(f"Take a screenshot for debug info")
+    #_driver.save_screenshot("cloudflare-challenge.png")
 
     _driver.find_element(By.ID, 'page-login-inp-username').send_keys(_user)
     sleep(2)
@@ -68,9 +70,8 @@ def _open_gs_and_login(_url, _user, _password, _options):
     return _driver
 
 def check_chrome4testing(extract_to='.', chromepath='chrome-win64/chrome.exe'):
-    # Check if the binarychrome exists
     if os.path.isfile(chromepath):
-        logging.info(f'Chrome4Test {binarychrome} exists.')
+        logging.info(f'Chrome4Test {chromepath} exists.')
         local_version = get_chrome4testing_local_version(chromepath)
         latest_version = get_chrome4testing_latest_version()
 
@@ -85,7 +86,7 @@ def check_chrome4testing(extract_to='.', chromepath='chrome-win64/chrome.exe'):
         else:
             logging.info("Could not determine versions. Check your installation and internet connection.")
     else:
-        logging.warning(f'Chrome4Test {binarychrome} does not exist.')
+        logging.warning(f'Chrome4Test {chromepath} does not exist.')
         latest_version = get_chrome4testing_latest_version()
         logging.info(f'Chrome4Test newest online:{latest_version} .')
         download_chrome4testing(version=latest_version, extract_to=script_dir)
@@ -641,15 +642,25 @@ def print_cover(cover_file, page_to_print):
     logging.info(f'Print PDF [{input_pdf}] Page:{page_number}]')
     output_pdf = tempfile.mktemp('.pdf')
     extract_page(input_pdf, page_number, output_pdf)
-
     logging.debug(f'Actualy print the extract pdf [{output_pdf}].')
+
+    printer_name = win32print.GetDefaultPrinter()
+    logging.debug(f'Using printer: {printer_name}')
+
+    sumatra_path = r"SumatraPDF.exe"
+    if not os.path.isfile(sumatra_path):
+        logging.error(f'SumatraPDF.exe not exists. Please Download from https://www.sumatrapdfreader.org as portable and place the exe as SumatraPDF.exe in same folder as the .py file')
+        return
+
     # Print the PDF file
     try:
-        win32api.ShellExecute(0, "print", output_pdf, None, None, 0)
+        subprocess.run([sumatra_path, "-print-to-default", output_pdf], check=True)
+    except subprocess.CalledProcessError as error:
+        logging.error(f'Printer command failed with error code: {error.returncode}')
     except Exception as error:
-        logging.error("Printer is not working")
-        pass
-    # os.remove(output_pdf)
+        logging.error(f'Printer is not working: {error}')
+    finally:
+        os.remove(output_pdf)
 
 
 def create_webdriver_cover():
@@ -789,7 +800,6 @@ if __name__ == '__main__':
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     binarychrome = "chrome-win64/chrome.exe"
-    shutil.rmtree('chrome-win64')
     check_chrome4testing(extract_to=script_dir, chromepath=binarychrome)
 
     chrome_options = uc.ChromeOptions()
